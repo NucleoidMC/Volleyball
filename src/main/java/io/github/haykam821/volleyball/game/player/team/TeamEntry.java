@@ -3,6 +3,7 @@ package io.github.haykam821.volleyball.game.player.team;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
+import net.minecraft.entity.mob.SlimeEntity;
 import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
@@ -64,6 +65,10 @@ public class TeamEntry {
 		float yaw = this.spawn.getData().getFloat("Facing");
 	
 		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), yaw, 0);
+	}
+
+	public boolean isBallOnCourt(SlimeEntity ball) {
+		return ball.isOnGround() && this.courtBounds.contains(ball.getBlockPos());
 	}
 
 	public int incrementScore() {

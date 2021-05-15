@@ -26,6 +26,11 @@ public class VolleyballSlimeEntity extends SlimeEntity {
 		return success;
 	}
 
+	@Override
+	protected void drop(DamageSource source) {
+		return;
+	}
+
 	public static VolleyballSlimeEntity createBall(ServerWorld world, int size) {
 		VolleyballSlimeEntity ball = new VolleyballSlimeEntity(world);
 

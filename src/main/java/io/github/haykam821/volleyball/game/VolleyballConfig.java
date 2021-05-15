@@ -16,7 +16,8 @@ public class VolleyballConfig {
 			PlayerConfig.CODEC.fieldOf("players").forGetter(VolleyballConfig::getPlayerConfig),
 			GameTeam.CODEC.listOf().fieldOf("teams").forGetter(VolleyballConfig::getTeams),
 			Codec.INT.optionalFieldOf("required_score", 10).forGetter(VolleyballConfig::getRequiredScore),
-			Codec.INT.optionalFieldOf("reset_ball_ticks", 20 * 3).forGetter(VolleyballConfig::getResetBallTicks)
+			Codec.INT.optionalFieldOf("reset_ball_ticks", 20 * 3).forGetter(VolleyballConfig::getResetBallTicks),
+			Codec.INT.optionalFieldOf("ball_size", 1).forGetter(VolleyballConfig::getBallSize)
 		).apply(instance, VolleyballConfig::new);
 	});
 
@@ -25,13 +26,15 @@ public class VolleyballConfig {
 	private final List<GameTeam> teams;
 	private final int requiredScore;
 	private final int resetBallTicks;
+	private final int ballSize;
 
-	public VolleyballConfig(Identifier map, PlayerConfig playerConfig, List<GameTeam> teams, int requiredScore, int resetBallTicks) {
+	public VolleyballConfig(Identifier map, PlayerConfig playerConfig, List<GameTeam> teams, int requiredScore, int resetBallTicks, int ballSize) {
 		this.map = map;
 		this.playerConfig = playerConfig;
 		this.teams = teams;
 		this.requiredScore = requiredScore;
 		this.resetBallTicks = resetBallTicks;
+		this.ballSize = ballSize;
 	}
 
 	public Identifier getMap() {
@@ -52,5 +55,9 @@ public class VolleyballConfig {
 
 	public int getResetBallTicks() {
 		return this.resetBallTicks;
+	}
+
+	public int getBallSize() {
+		return this.ballSize;
 	}
 }

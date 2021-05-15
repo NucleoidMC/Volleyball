@@ -26,8 +26,10 @@ public class VolleyballSlimeEntity extends SlimeEntity {
 		return success;
 	}
 
-	public static VolleyballSlimeEntity createBall(ServerWorld world) {
+	public static VolleyballSlimeEntity createBall(ServerWorld world, int size) {
 		VolleyballSlimeEntity ball = new VolleyballSlimeEntity(world);
+
+		ball.setSize(size, true);
 
 		ball.setPersistent();
 		ball.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOW_FALLING, Integer.MAX_VALUE, 1, true, false));

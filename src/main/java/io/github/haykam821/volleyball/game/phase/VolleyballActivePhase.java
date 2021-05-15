@@ -214,7 +214,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 
 	// Utilities
 	public SlimeEntity spawnBall() {
-		this.ball = VolleyballSlimeEntity.createBall(this.world);
+		this.ball = VolleyballSlimeEntity.createBall(this.world, this.config.getBallSize());
 
 		this.map.spawnAtBall(this.world, this.ball);
 		this.world.spawnEntity(this.ball);

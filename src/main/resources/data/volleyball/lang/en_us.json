@@ -1,0 +1,7 @@
+{
+	"gameType.volleyball.volleyball": "Volleyball",
+	"text.volleyball.no_winners": "Nobody won the game!",
+	"text.volleyball.score": "The %s team has scored a point!",
+	"text.volleyball.template_load_failed": "Failed to load the map template",
+	"text.volleyball.win": "The %s team has won the game!"
+}

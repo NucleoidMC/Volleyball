@@ -1,0 +1,25 @@
+{
+	"schemaVersion": 1,
+	"id": "volleyball",
+	"version": "${version}",
+	"name": "Volleyball",
+	"description": "A simple slime-based volleyball minigame for Minecraft.",
+	"authors": [
+		"haykam821"
+	],
+	"contact": {
+		"homepage": "https://github.com/haykam821/Volleyball#readme",
+		"issues": "https://github.com/haykam821/Volleyball/issues"
+	},
+	"entrypoints": {
+		"main": [
+			"io.github.haykam821.volleyball.Volleyball"
+		]
+	},
+	"license": "MIT",
+	"icon": "assets/volleyball/icon.png",
+	"depends": {
+		"fabricloader": ">=0.4.0",
+		"plasmid": ">=0.4.21"
+	}
+}

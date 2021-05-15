@@ -1,0 +1,22 @@
+{
+	"type": "volleyball:volleyball",
+	"name": "Volleyball",
+	"map": "volleyball:court",
+	"players": {
+		"min": 1,
+		"max": 64,
+		"threshold": 4
+	},
+	"teams": [
+		{
+			"key": "red",
+			"display": "Red",
+			"color": "red"
+		},
+		{
+			"key": "blue",
+			"display": "Blue",
+			"color": "blue"
+		}
+	]
+}

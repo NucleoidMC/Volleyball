@@ -19,7 +19,7 @@ import xyz.nucleoid.plasmid.map.template.MapTemplate;
 import xyz.nucleoid.plasmid.map.template.TemplateRegion;
 import xyz.nucleoid.plasmid.util.BlockBounds;
 
-public class TeamEntry {
+public class TeamEntry implements Comparable<TeamEntry> {
 	private final VolleyballActivePhase phase;
 	private final GameTeam gameTeam;
 	private final Team scoreboardTeam;
@@ -91,6 +91,14 @@ public class TeamEntry {
 		return new TranslatableText("text.volleyball.win", this.getName()).formatted(Formatting.GOLD);
 	}
 
+	public String getScoreboardEntryString() {
+		return this.getNameString() + Formatting.RESET + ": " + this.score + " points";
+	}
+
+	public String getNameString() {
+		return this.gameTeam.getFormatting() + this.gameTeam.getDisplay();
+	}
+
 	public Text getName() {
 		return new LiteralText(this.gameTeam.getDisplay()).formatted(this.gameTeam.getFormatting());
 	}
@@ -117,6 +125,11 @@ public class TeamEntry {
 
 	private TemplateRegion getRegion(MapTemplate template, String key) {
 		return template.getMetadata().getFirstRegion(this.gameTeam.getKey() + "_" + key);
+	}
+
+	@Override
+	public int compareTo(TeamEntry other) {
+		return this.score - other.score;
 	}
 
 	private static Team getOrCreateScoreboardTeam(String key, ServerScoreboard scoreboard) {

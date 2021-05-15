@@ -11,6 +11,7 @@ import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.player.PlayerEntry;
 import io.github.haykam821.volleyball.game.player.WinManager;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
+import io.github.haykam821.volleyball.game.player.team.VolleyballScoreboard;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.mob.SlimeEntity;
@@ -38,6 +39,7 @@ import xyz.nucleoid.plasmid.game.event.PlayerRemoveListener;
 import xyz.nucleoid.plasmid.game.player.GameTeam;
 import xyz.nucleoid.plasmid.game.rule.GameRule;
 import xyz.nucleoid.plasmid.game.rule.RuleResult;
+import xyz.nucleoid.plasmid.widget.GlobalWidgets;
 
 public class VolleyballActivePhase implements AttackEntityListener, GameCloseListener, GameOpenListener, GameTickListener, PlayerAddListener, PlayerDeathListener, PlayerRemoveListener {
 	private final ServerWorld world;
@@ -47,11 +49,12 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	private final Set<PlayerEntry> players;
 	private final Set<TeamEntry> teams;
 	private final WinManager winManager = new WinManager(this);
+	private final VolleyballScoreboard scoreboard;
 	private boolean opened;
 	private SlimeEntity ball;
 	private int ballTicks = 0;
 
-	public VolleyballActivePhase(GameSpace gameSpace, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config) {
+	public VolleyballActivePhase(GameSpace gameSpace, VolleyballMap map, TeamSelectionLobby teamSelection, GlobalWidgets widgets, VolleyballConfig config) {
 		this.world = gameSpace.getWorld();
 		this.gameSpace = gameSpace;
 		this.map = map;
@@ -60,6 +63,8 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 		this.players = new HashSet<>(this.gameSpace.getPlayerCount());
 		this.teams = new HashSet<>(this.config.getTeams().size());
 		Map<GameTeam, TeamEntry> gameTeamsToEntries = new HashMap<>(this.config.getTeams().size());
+
+		this.scoreboard = new VolleyballScoreboard(widgets, this);
 
 		MinecraftServer server = this.world.getServer();
 		ServerScoreboard scoreboard = server.getScoreboard();
@@ -95,9 +100,10 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	}
 
 	public static void open(GameSpace gameSpace, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config) {
-		VolleyballActivePhase phase = new VolleyballActivePhase(gameSpace, map, teamSelection, config);
-
 		gameSpace.openGame(game -> {
+			GlobalWidgets widgets = new GlobalWidgets(game);
+			VolleyballActivePhase phase = new VolleyballActivePhase(gameSpace, map, teamSelection, widgets, config);
+
 			VolleyballActivePhase.setRules(game);
 
 			game.on(AttackEntityListener.EVENT, phase);
@@ -150,6 +156,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 			for (TeamEntry team : this.getTeams()) {
 				if (team.isBallOnCourt(this.ball)) {
 					team.incrementScore();
+					this.scoreboard.update();
 				}
 			}
 		}

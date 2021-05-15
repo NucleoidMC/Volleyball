@@ -5,17 +5,14 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.haykam821.volleyball.entity.VolleyballSlimeEntity;
 import io.github.haykam821.volleyball.game.VolleyballConfig;
 import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.player.PlayerEntry;
 import io.github.haykam821.volleyball.game.player.WinManager;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.mob.SlimeEntity;
 import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.server.MinecraftServer;
@@ -116,7 +113,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	// Listeners
 	@Override
 	public ActionResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
-		return attacked == this.ball ? ActionResult.SUCCESS : ActionResult.FAIL;
+		return attacked == this.ball ? ActionResult.PASS : ActionResult.FAIL;
 	}
 
 	@Override
@@ -147,7 +144,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 		if (this.ball == null || !this.ball.isAlive()) {
 			this.ballTicks -= 1;
 			if (this.ballTicks <= 0) {
-				this.ball = this.createBall();
+				this.spawnBall();
 			}
 		} else {
 			for (TeamEntry team : this.getTeams()) {
@@ -216,21 +213,13 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	}
 
 	// Utilities
-	public SlimeEntity createBall() {
-		SlimeEntity ball = EntityType.SLIME.create(this.world);
+	public SlimeEntity spawnBall() {
+		this.ball = VolleyballSlimeEntity.createBall(this.world);
 
-		ball.setAiDisabled(true);
-		ball.setPersistent();
+		this.map.spawnAtBall(this.world, this.ball);
+		this.world.spawnEntity(this.ball);
 
-		ball.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOW_FALLING, Integer.MAX_VALUE, 1, true, false));
-		
-		ball.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(Integer.MAX_VALUE);
-		ball.setHealth(ball.getMaxHealth());
-
-		this.map.spawnAtBall(this.world, ball);
-		this.world.spawnEntity(ball);
-
-		return ball;
+		return this.ball;
 	}
 
 	public void resetBall() {

@@ -138,6 +138,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 
 		for (PlayerEntry player : this.players) {
 			player.spawn();
+			player.clearInventory();
 		}
 	}
 

@@ -43,4 +43,12 @@ public class PlayerEntry implements GameTickListener {
 	public void spawn() {
 		this.team.spawn(this.phase.getGameSpace().getWorld(), this.player);
 	}
+
+	public void clearInventory() {
+		this.player.inventory.clear();
+
+		this.player.currentScreenHandler.sendContentUpdates();
+		this.player.playerScreenHandler.onContentChanged(this.player.inventory);
+		this.player.updateCursorStack();
+	}
 }

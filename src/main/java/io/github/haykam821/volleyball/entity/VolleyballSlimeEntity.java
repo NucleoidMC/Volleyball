@@ -1,14 +1,19 @@
 package io.github.haykam821.volleyball.entity;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.mob.SlimeEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 public class VolleyballSlimeEntity extends SlimeEntity {
+	private static final double XZ_STRENGTH = 0.7;
+	private static final double Y_STRENGTH = 0.9;
+
 	public VolleyballSlimeEntity(World world) {
 		super(EntityType.SLIME, world);
 	}
@@ -20,15 +25,33 @@ public class VolleyballSlimeEntity extends SlimeEntity {
 
 	@Override
 	public boolean damage(DamageSource source, float amount) {
-		boolean success = super.damage(source, amount);
-		this.setHealth(this.getMaxHealth());
+		if (source.getAttacker() != null) {
+			this.setVelocity(VolleyballSlimeEntity.getHitVelocity(source.getAttacker()));
+		}
 
-		return success;
+		return true;
 	}
 
 	@Override
 	protected void drop(DamageSource source) {
 		return;
+	}
+
+	private static Vec3d getHitVelocity(Entity attacker) {
+		double yaw = Math.toRadians(attacker.yaw + 90);
+		double pitch = Math.toRadians(attacker.pitch + 90);
+
+		double spikeMultiplier = VolleyballSlimeEntity.isSpiking(attacker) ? 1.2 : 1;
+
+		double x = Math.sin(pitch) * Math.cos(yaw) * XZ_STRENGTH * spikeMultiplier;
+		double y = Math.cos(pitch) * Y_STRENGTH;
+		double z = Math.sin(pitch) * Math.sin(yaw) * XZ_STRENGTH * spikeMultiplier;
+
+		return new Vec3d(x, y, z);
+	}
+
+	private static boolean isSpiking(Entity entity) {
+		return entity.isSprinting() && !entity.isOnGround();
 	}
 
 	public static VolleyballSlimeEntity createBall(ServerWorld world, int size) {

@@ -155,7 +155,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 		} else {
 			for (TeamEntry team : this.getTeams()) {
 				if (team.isBallOnCourt(this.ball)) {
-					team.incrementScore();
+					team.getOtherTeam().incrementScore();
 					this.scoreboard.update();
 				}
 			}

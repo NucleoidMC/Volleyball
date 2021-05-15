@@ -127,6 +127,13 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		return template.getMetadata().getFirstRegion(this.gameTeam.getKey() + "_" + key);
 	}
 
+	public TeamEntry getOtherTeam() {
+		for (TeamEntry team : this.phase.getTeams()) {
+			if (this != team) return team;
+		}
+		return this;
+	}
+
 	@Override
 	public int compareTo(TeamEntry other) {
 		return this.score - other.score;

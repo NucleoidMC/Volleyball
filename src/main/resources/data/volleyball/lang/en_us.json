@@ -1,5 +1,6 @@
 {
 	"gameType.volleyball.volleyball": "Volleyball",
+	"text.volleyball.inactive_ball_reset": "The ball was reset because it remained inactive for too long!",
 	"text.volleyball.no_winners": "Nobody won the game!",
 	"text.volleyball.score": "The %s team has scored a point!",
 	"text.volleyball.scoreboard.entry": "%s: %d points",

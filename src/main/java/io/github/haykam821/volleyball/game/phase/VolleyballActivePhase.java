@@ -21,7 +21,10 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.text.TranslatableText;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.world.GameMode;
@@ -53,6 +56,10 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	private boolean opened;
 	private SlimeEntity ball;
 	private int ballTicks = 0;
+	/**
+	 * The number of ticks since the ball was last hit.
+	 */
+	private int inactiveBallTicks = 0;
 
 	public VolleyballActivePhase(GameSpace gameSpace, VolleyballMap map, TeamSelectionLobby teamSelection, GlobalWidgets widgets, VolleyballConfig config) {
 		this.world = gameSpace.getWorld();
@@ -119,7 +126,11 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	// Listeners
 	@Override
 	public ActionResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
-		return attacked == this.ball ? ActionResult.PASS : ActionResult.FAIL;
+		if (attacked == this.ball) {
+			this.inactiveBallTicks = 0;
+			return ActionResult.PASS;
+		}
+		return ActionResult.FAIL;
 	}
 
 	@Override
@@ -153,7 +164,11 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 			if (this.ballTicks <= 0) {
 				this.spawnBall();
 			}
+		} else if (this.inactiveBallTicks >= this.config.getInactiveBallTicks()) {
+			this.resetBall();
+			this.gameSpace.getPlayers().sendMessage(this.getInactiveBallResetText());
 		} else {
+			this.inactiveBallTicks += 1;
 			for (TeamEntry team : this.getTeams()) {
 				if (team.isBallOnCourt(this.ball)) {
 					team.getOtherTeam().incrementScore();
@@ -224,6 +239,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	// Utilities
 	public SlimeEntity spawnBall() {
 		this.ball = VolleyballSlimeEntity.createBall(this.world, this.config.getBallSize());
+		this.inactiveBallTicks = 0;
 
 		this.map.spawnAtBall(this.world, this.ball);
 		this.world.spawnEntity(this.ball);
@@ -238,6 +254,10 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 		}
 
 		this.ballTicks = this.config.getResetBallTicks();
+	}
+
+	public Text getInactiveBallResetText() {
+		return new TranslatableText("text.volleyball.inactive_ball_reset").formatted(Formatting.RED);
 	}
 
 	public void pling() {

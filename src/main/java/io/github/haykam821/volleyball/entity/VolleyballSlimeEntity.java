@@ -38,8 +38,8 @@ public class VolleyballSlimeEntity extends SlimeEntity {
 	}
 
 	private static Vec3d getHitVelocity(Entity attacker) {
-		double yaw = Math.toRadians(attacker.yaw + 90);
-		double pitch = Math.toRadians(attacker.pitch + 90);
+		double yaw = Math.toRadians(attacker.getYaw() + 90);
+		double pitch = Math.toRadians(attacker.getPitch() + 90);
 
 		double spikeMultiplier = VolleyballSlimeEntity.isSpiking(attacker) ? 1.2 : 1;
 

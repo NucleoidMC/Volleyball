@@ -10,7 +10,7 @@ public class Volleyball implements ModInitializer {
 	public static final String MOD_ID = "volleyball";
 
 	private static final Identifier VOLLEYBALL_ID = new Identifier(MOD_ID, "volleyball");
-	public static final GameType<VolleyballConfig> VOLLEYBALL_TYPE = GameType.register(VOLLEYBALL_ID, VolleyballWaitingPhase::open, VolleyballConfig.CODEC);
+	public static final GameType<VolleyballConfig> VOLLEYBALL_TYPE = GameType.register(VOLLEYBALL_ID, VolleyballConfig.CODEC, VolleyballWaitingPhase::open);
 
 	@Override
 	public void onInitialize() {

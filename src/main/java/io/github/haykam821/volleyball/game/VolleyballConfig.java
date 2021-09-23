@@ -1,20 +1,18 @@
 package io.github.haykam821.volleyball.game;
 
-import java.util.List;
-
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.util.Identifier;
-import xyz.nucleoid.plasmid.game.config.PlayerConfig;
-import xyz.nucleoid.plasmid.game.player.GameTeam;
+import xyz.nucleoid.plasmid.game.common.config.PlayerConfig;
+import xyz.nucleoid.plasmid.game.common.team.GameTeamList;
 
 public class VolleyballConfig {
 	public static final Codec<VolleyballConfig> CODEC = RecordCodecBuilder.create(instance -> {
 		return instance.group(
 			Identifier.CODEC.fieldOf("map").forGetter(VolleyballConfig::getMap),
 			PlayerConfig.CODEC.fieldOf("players").forGetter(VolleyballConfig::getPlayerConfig),
-			GameTeam.CODEC.listOf().fieldOf("teams").forGetter(VolleyballConfig::getTeams),
+			GameTeamList.CODEC.fieldOf("teams").forGetter(VolleyballConfig::getTeams),
 			Codec.INT.optionalFieldOf("required_score", 10).forGetter(VolleyballConfig::getRequiredScore),
 			Codec.INT.optionalFieldOf("reset_ball_ticks", 20 * 3).forGetter(VolleyballConfig::getResetBallTicks),
 			Codec.INT.optionalFieldOf("ball_size", 1).forGetter(VolleyballConfig::getBallSize),
@@ -24,13 +22,13 @@ public class VolleyballConfig {
 
 	private final Identifier map;
 	private final PlayerConfig playerConfig;
-	private final List<GameTeam> teams;
+	private final GameTeamList teams;
 	private final int requiredScore;
 	private final int resetBallTicks;
 	private final int ballSize;
 	private final int inactiveBallTicks;
 
-	public VolleyballConfig(Identifier map, PlayerConfig playerConfig, List<GameTeam> teams, int requiredScore, int resetBallTicks, int ballSize, int inactiveBallTicks) {
+	public VolleyballConfig(Identifier map, PlayerConfig playerConfig, GameTeamList teams, int requiredScore, int resetBallTicks, int ballSize, int inactiveBallTicks) {
 		this.map = map;
 		this.playerConfig = playerConfig;
 		this.teams = teams;
@@ -48,7 +46,7 @@ public class VolleyballConfig {
 		return this.playerConfig;
 	}
 
-	public List<GameTeam> getTeams() {
+	public GameTeamList getTeams() {
 		return this.teams;
 	}
 

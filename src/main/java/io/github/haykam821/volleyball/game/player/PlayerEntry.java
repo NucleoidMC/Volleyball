@@ -3,10 +3,10 @@ package io.github.haykam821.volleyball.game.player;
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
-import xyz.nucleoid.plasmid.game.event.GameTickListener;
-import xyz.nucleoid.plasmid.map.template.TemplateRegion;
+import xyz.nucleoid.map_templates.TemplateRegion;
+import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
 
-public class PlayerEntry implements GameTickListener {
+public class PlayerEntry implements GameActivityEvents.Tick {
 	private final VolleyballActivePhase phase;
 	private final ServerPlayerEntity player;
 	private final TeamEntry team;
@@ -41,14 +41,13 @@ public class PlayerEntry implements GameTickListener {
 
 	// Utilities
 	public void spawn() {
-		this.team.spawn(this.phase.getGameSpace().getWorld(), this.player);
+		this.team.spawn(this.phase.getWorld(), this.player);
 	}
 
 	public void clearInventory() {
-		this.player.inventory.clear();
+		this.player.getInventory().clear();
 
 		this.player.currentScreenHandler.sendContentUpdates();
-		this.player.playerScreenHandler.onContentChanged(this.player.inventory);
-		this.player.updateCursorStack();
+		this.player.playerScreenHandler.onContentChanged(this.player.getInventory());
 	}
 }

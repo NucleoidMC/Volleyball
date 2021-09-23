@@ -9,17 +9,19 @@ import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
-import xyz.nucleoid.plasmid.game.player.GameTeam;
-import xyz.nucleoid.plasmid.map.template.MapTemplate;
-import xyz.nucleoid.plasmid.map.template.TemplateRegion;
-import xyz.nucleoid.plasmid.util.BlockBounds;
+import xyz.nucleoid.map_templates.BlockBounds;
+import xyz.nucleoid.map_templates.MapTemplate;
+import xyz.nucleoid.map_templates.TemplateRegion;
+import xyz.nucleoid.plasmid.game.common.team.GameTeam;
 
 public class TeamEntry implements Comparable<TeamEntry> {
+	private static final BlockBounds DEFAULT_BOUNDS = BlockBounds.ofBlock(BlockPos.ORIGIN);
+
 	private final VolleyballActivePhase phase;
 	private final GameTeam gameTeam;
 	private final Team scoreboardTeam;
@@ -61,7 +63,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 
 	// Utilities
 	public void spawn(ServerWorld world, ServerPlayerEntity player) {
-		Vec3d spawnPos = this.spawn.getBounds().getCenterBottom();
+		Vec3d spawnPos = this.spawn.getBounds().centerBottom();
 		float yaw = this.spawn.getData().getFloat("Facing");
 	
 		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), yaw, 0);
@@ -91,26 +93,17 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		return new TranslatableText("text.volleyball.win", this.getName()).formatted(Formatting.GOLD);
 	}
 
-	public String getScoreboardEntryString() {
-		return this.getNameString() + Formatting.RESET + ": " + this.score + " points";
-	}
-
-	public String getNameString() {
-		return this.gameTeam.getFormatting() + this.gameTeam.getDisplay();
+	public Text getScoreboardEntryText() {
+		return new TranslatableText("text.volleyball.scoreboard.entry", this.getName(), this.score);
 	}
 
 	public Text getName() {
-		return new LiteralText(this.gameTeam.getDisplay()).formatted(this.gameTeam.getFormatting());
-	}
-
-	private Text getUncoloredName() {
-		return new LiteralText(this.gameTeam.getDisplay());
+		return this.gameTeam.config().name();
 	}
 
 	private void initializeTeam() {
 		// Display
-		this.scoreboardTeam.setDisplayName(this.getUncoloredName());
-		this.scoreboardTeam.setColor(this.gameTeam.getFormatting());
+		this.gameTeam.config().applyToScoreboard(this.scoreboardTeam);
 
 		// Rules
 		this.scoreboardTeam.setFriendlyFireAllowed(false);
@@ -120,11 +113,11 @@ public class TeamEntry implements Comparable<TeamEntry> {
 
 	private BlockBounds getBoundsOrDefault(MapTemplate template, String key) {
 		TemplateRegion region = this.getRegion(template, key);
-		return region == null ? BlockBounds.EMPTY : region.getBounds();
+		return region == null ? DEFAULT_BOUNDS : region.getBounds();
 	}
 
 	private TemplateRegion getRegion(MapTemplate template, String key) {
-		return template.getMetadata().getFirstRegion(this.gameTeam.getKey() + "_" + key);
+		return template.getMetadata().getFirstRegion(this.gameTeam.key().id() + "_" + key);
 	}
 
 	public TeamEntry getOtherTeam() {

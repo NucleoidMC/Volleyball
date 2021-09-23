@@ -6,9 +6,9 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
-import xyz.nucleoid.plasmid.map.template.MapTemplate;
-import xyz.nucleoid.plasmid.map.template.TemplateChunkGenerator;
-import xyz.nucleoid.plasmid.map.template.TemplateRegion;
+import xyz.nucleoid.map_templates.MapTemplate;
+import xyz.nucleoid.map_templates.TemplateRegion;
+import xyz.nucleoid.plasmid.game.world.generator.TemplateChunkGenerator;
 
 public class VolleyballMap {
 	private final MapTemplate template;
@@ -25,12 +25,16 @@ public class VolleyballMap {
 		return this.template;
 	}
 
+	public Vec3d getWaitingSpawnPos() {
+		return this.waitingSpawn.getBounds().centerBottom();
+	}
+
 	public void spawnAtWaiting(ServerWorld world, Entity entity) {
-		this.spawn(world, entity, this.waitingSpawn.getBounds().getCenterBottom());
+		this.spawn(world, entity, this.getWaitingSpawnPos());
 	}
 
 	public void spawnAtBall(ServerWorld world, Entity entity) {
-		this.spawn(world, entity, this.ballSpawn.getBounds().getCenter());
+		this.spawn(world, entity, this.ballSpawn.getBounds().center());
 	}
 
 	private void spawn(ServerWorld world, Entity entity, Vec3d pos) {

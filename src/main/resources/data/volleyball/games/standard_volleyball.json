@@ -1,6 +1,5 @@
 {
 	"type": "volleyball:volleyball",
-	"name": "Volleyball",
 	"map": "volleyball:court",
 	"players": {
 		"min": 1,
@@ -10,12 +9,12 @@
 	"teams": [
 		{
 			"key": "red",
-			"display": "Red",
+			"name": "Red",
 			"color": "red"
 		},
 		{
 			"key": "blue",
-			"display": "Blue",
+			"name": "Blue",
 			"color": "blue"
 		}
 	]

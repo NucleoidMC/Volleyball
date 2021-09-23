@@ -28,23 +28,22 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.world.GameMode;
+import xyz.nucleoid.plasmid.chat.ChatChannel;
+import xyz.nucleoid.plasmid.chat.HasChatChannel;
+import xyz.nucleoid.plasmid.game.GameActivity;
 import xyz.nucleoid.plasmid.game.GameCloseReason;
-import xyz.nucleoid.plasmid.game.GameLogic;
 import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.TeamSelectionLobby;
-import xyz.nucleoid.plasmid.game.event.AttackEntityListener;
-import xyz.nucleoid.plasmid.game.event.GameCloseListener;
-import xyz.nucleoid.plasmid.game.event.GameOpenListener;
-import xyz.nucleoid.plasmid.game.event.GameTickListener;
-import xyz.nucleoid.plasmid.game.event.PlayerAddListener;
-import xyz.nucleoid.plasmid.game.event.PlayerDeathListener;
-import xyz.nucleoid.plasmid.game.event.PlayerRemoveListener;
-import xyz.nucleoid.plasmid.game.player.GameTeam;
-import xyz.nucleoid.plasmid.game.rule.GameRule;
-import xyz.nucleoid.plasmid.game.rule.RuleResult;
-import xyz.nucleoid.plasmid.widget.GlobalWidgets;
+import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
+import xyz.nucleoid.plasmid.game.common.team.GameTeam;
+import xyz.nucleoid.plasmid.game.common.team.TeamSelectionLobby;
+import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.game.rule.GameRuleType;
+import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerChatEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class VolleyballActivePhase implements AttackEntityListener, GameCloseListener, GameOpenListener, GameTickListener, PlayerAddListener, PlayerDeathListener, PlayerRemoveListener {
+public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Disable, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Add, PlayerDeathEvent, GamePlayerEvents.Remove, PlayerChatEvent {
 	private final ServerWorld world;
 	private final GameSpace gameSpace;
 	private final VolleyballMap map;
@@ -61,22 +60,26 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	 */
 	private int inactiveBallTicks = 0;
 
-	public VolleyballActivePhase(GameSpace gameSpace, VolleyballMap map, TeamSelectionLobby teamSelection, GlobalWidgets widgets, VolleyballConfig config) {
-		this.world = gameSpace.getWorld();
+	public VolleyballActivePhase(ServerWorld world, GameSpace gameSpace, VolleyballMap map, TeamSelectionLobby teamSelection, GlobalWidgets widgets, VolleyballConfig config, Text shortName) {
+		this.world = world;
 		this.gameSpace = gameSpace;
 		this.map = map;
 		this.config = config;
 
-		this.players = new HashSet<>(this.gameSpace.getPlayerCount());
-		this.teams = new HashSet<>(this.config.getTeams().size());
-		Map<GameTeam, TeamEntry> gameTeamsToEntries = new HashMap<>(this.config.getTeams().size());
+		this.players = new HashSet<>(this.gameSpace.getPlayers().size());
 
-		this.scoreboard = new VolleyballScoreboard(widgets, this);
+		int teamCount = this.config.getTeams().list().size();
+		this.teams = new HashSet<>(teamCount);
+		Map<GameTeam, TeamEntry> gameTeamsToEntries = new HashMap<>(teamCount);
+
+		this.scoreboard = new VolleyballScoreboard(widgets, this, shortName);
 
 		MinecraftServer server = this.world.getServer();
 		ServerScoreboard scoreboard = server.getScoreboard();
 
-		teamSelection.allocate((gameTeam, player) -> {
+		teamSelection.allocate(this.gameSpace.getPlayers(), (key, player) -> {
+			GameTeam gameTeam = this.config.getTeams().byKey(key);
+
 			// Get or create team
 			TeamEntry team = gameTeamsToEntries.get(gameTeam);
 			if (team == null) {
@@ -90,36 +93,36 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 		});
 	}
 
-	public static void setRules(GameLogic game) {
-		game.setRule(GameRule.BLOCK_DROPS, RuleResult.DENY);
-		game.setRule(GameRule.BREAK_BLOCKS, RuleResult.DENY);
-		game.setRule(GameRule.CRAFTING, RuleResult.DENY);
-		game.setRule(GameRule.FALL_DAMAGE, RuleResult.DENY);
-		game.setRule(GameRule.HUNGER, RuleResult.DENY);
-		game.setRule(GameRule.INTERACTION, RuleResult.DENY);
-		game.setRule(GameRule.MODIFY_ARMOR, RuleResult.DENY);
-		game.setRule(GameRule.MODIFY_INVENTORY, RuleResult.DENY);
-		game.setRule(GameRule.PLACE_BLOCKS, RuleResult.DENY);
-		game.setRule(GameRule.PORTALS, RuleResult.DENY);
-		game.setRule(GameRule.PVP, RuleResult.ALLOW);
-		game.setRule(GameRule.TEAM_CHAT, RuleResult.ALLOW);
-		game.setRule(GameRule.THROW_ITEMS, RuleResult.DENY);
+	public static void setRules(GameActivity activity) {
+		activity.deny(GameRuleType.BLOCK_DROPS);
+		activity.deny(GameRuleType.BREAK_BLOCKS);
+		activity.deny(GameRuleType.CRAFTING);
+		activity.deny(GameRuleType.FALL_DAMAGE);
+		activity.deny(GameRuleType.HUNGER);
+		activity.deny(GameRuleType.INTERACTION);
+		activity.deny(GameRuleType.MODIFY_ARMOR);
+		activity.deny(GameRuleType.MODIFY_INVENTORY);
+		activity.deny(GameRuleType.PLACE_BLOCKS);
+		activity.deny(GameRuleType.PORTALS);
+		activity.allow(GameRuleType.PVP);
+		activity.deny(GameRuleType.THROW_ITEMS);
 	}
 
-	public static void open(GameSpace gameSpace, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config) {
-		gameSpace.openGame(game -> {
-			GlobalWidgets widgets = new GlobalWidgets(game);
-			VolleyballActivePhase phase = new VolleyballActivePhase(gameSpace, map, teamSelection, widgets, config);
+	public static void open(GameSpace gameSpace, ServerWorld world, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config, Text shortName) {
+		gameSpace.setActivity(activity -> {
+			GlobalWidgets widgets = GlobalWidgets.addTo(activity);
+			VolleyballActivePhase phase = new VolleyballActivePhase(world, gameSpace, map, teamSelection, widgets, config, shortName);
 
-			VolleyballActivePhase.setRules(game);
+			VolleyballActivePhase.setRules(activity);
 
-			game.on(AttackEntityListener.EVENT, phase);
-			game.on(GameCloseListener.EVENT, phase);
-			game.on(GameOpenListener.EVENT, phase);
-			game.on(GameTickListener.EVENT, phase);
-			game.on(PlayerAddListener.EVENT, phase);
-			game.on(PlayerDeathListener.EVENT, phase);
-			game.on(PlayerRemoveListener.EVENT, phase);
+			activity.listen(PlayerAttackEntityEvent.EVENT, phase);
+			activity.listen(GameActivityEvents.DISABLE, phase);
+			activity.listen(GameActivityEvents.ENABLE, phase);
+			activity.listen(GameActivityEvents.TICK, phase);
+			activity.listen(GamePlayerEvents.ADD, phase);
+			activity.listen(PlayerDeathEvent.EVENT, phase);
+			activity.listen(GamePlayerEvents.REMOVE, phase);
+			activity.listen(PlayerChatEvent.EVENT, phase);
 		});
 	}
 
@@ -134,7 +137,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	}
 
 	@Override
-	public void onClose() {
+	public void onDisable() {
 		MinecraftServer server = this.world.getServer();
 		ServerScoreboard scoreboard = server.getScoreboard();
 
@@ -144,7 +147,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	}
 
 	@Override
-	public void onOpen() {
+	public void onEnable() {
 		this.opened = true;
 
 		for (PlayerEntry player : this.players) {
@@ -215,7 +218,26 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 		}
 	}
 
+	@Override
+	public ActionResult onSendChatMessage(ServerPlayerEntity sender, Text message) {
+		TeamEntry team = this.getChatTeam(sender);
+		if (team != null) {
+			Text teamMessage = new TranslatableText("text.plasmid.chat.team", message);
+			for (PlayerEntry player : this.players) {
+				if (player.getTeam() == team) {
+					player.getPlayer().sendSystemMessage(teamMessage, sender.getUuid());
+				}
+			}
+		}
+
+		return ActionResult.PASS;
+	}
+
 	// Getters
+	public ServerWorld getWorld() {
+		return this.world;
+	}
+
 	public GameSpace getGameSpace() {
 		return this.gameSpace;
 	}
@@ -237,6 +259,16 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	}
 
 	// Utilities
+	public TeamEntry getChatTeam(ServerPlayerEntity sender) {
+		if (!(sender instanceof HasChatChannel)) return null;
+		if (((HasChatChannel) sender).getChatChannel() != ChatChannel.TEAM) return null;
+
+		PlayerEntry entry = this.getPlayerEntry(sender);
+		if (entry == null) return null;
+
+		return entry.getTeam();
+	}
+
 	public SlimeEntity spawnBall() {
 		this.ball = VolleyballSlimeEntity.createBall(this.world, this.config.getBallSize());
 		this.inactiveBallTicks = 0;
@@ -249,7 +281,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 
 	public void resetBall() {
 		if (this.ball != null) {
-			this.ball.remove();
+			this.ball.discard();
 			this.ball = null;
 		}
 
@@ -261,7 +293,7 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	}
 
 	public void pling() {
-		this.getGameSpace().getPlayers().sendSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.PLAYERS, 1, 1);
+		this.getGameSpace().getPlayers().playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.PLAYERS, 1, 1);
 	}
 
 	public PlayerEntry getPlayerEntry(ServerPlayerEntity player) {
@@ -274,6 +306,6 @@ public class VolleyballActivePhase implements AttackEntityListener, GameCloseLis
 	}
 
 	private void setSpectator(ServerPlayerEntity player) {
-		player.setGameMode(GameMode.SPECTATOR);
+		player.changeGameMode(GameMode.SPECTATOR);
 	}
 }

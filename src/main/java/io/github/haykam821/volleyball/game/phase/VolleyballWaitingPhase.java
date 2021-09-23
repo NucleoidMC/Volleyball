@@ -4,110 +4,105 @@ import io.github.haykam821.volleyball.game.VolleyballConfig;
 import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.map.VolleyballMapBuilder;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.world.GameMode;
-import xyz.nucleoid.fantasy.BubbleWorldConfig;
-import xyz.nucleoid.plasmid.game.GameLogic;
+import xyz.nucleoid.fantasy.RuntimeWorldConfig;
+import xyz.nucleoid.plasmid.game.GameActivity;
 import xyz.nucleoid.plasmid.game.GameOpenContext;
 import xyz.nucleoid.plasmid.game.GameOpenProcedure;
+import xyz.nucleoid.plasmid.game.GameResult;
 import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.GameWaitingLobby;
-import xyz.nucleoid.plasmid.game.StartResult;
-import xyz.nucleoid.plasmid.game.TeamSelectionLobby;
-import xyz.nucleoid.plasmid.game.config.PlayerConfig;
-import xyz.nucleoid.plasmid.game.event.OfferPlayerListener;
-import xyz.nucleoid.plasmid.game.event.PlayerAddListener;
-import xyz.nucleoid.plasmid.game.event.PlayerDeathListener;
-import xyz.nucleoid.plasmid.game.event.RequestStartListener;
-import xyz.nucleoid.plasmid.game.player.JoinResult;
-import xyz.nucleoid.plasmid.game.rule.GameRule;
-import xyz.nucleoid.plasmid.game.rule.RuleResult;
+import xyz.nucleoid.plasmid.game.common.GameWaitingLobby;
+import xyz.nucleoid.plasmid.game.common.team.TeamSelectionLobby;
+import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.game.player.PlayerOffer;
+import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
+import xyz.nucleoid.plasmid.game.rule.GameRuleType;
+import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class VolleyballWaitingPhase implements PlayerAddListener, PlayerDeathListener, OfferPlayerListener, RequestStartListener {
+public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeathEvent, GamePlayerEvents.Offer, GameActivityEvents.RequestStart {
 	private final GameSpace gameSpace;
+	private final ServerWorld world;
 	private final VolleyballMap map;
 	private final TeamSelectionLobby teamSelection;
 	private final VolleyballConfig config;
+	private final Text shortName;
 
-	public VolleyballWaitingPhase(GameSpace gameSpace, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config) {
+	public VolleyballWaitingPhase(GameSpace gameSpace, ServerWorld world, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config, Text shortName) {
 		this.gameSpace = gameSpace;
+		this.world = world;
 		this.map = map;
 		this.teamSelection = teamSelection;
 		this.config = config;
+		this.shortName = shortName;
 	}
 
-	public static void setRules(GameLogic game) {
-		game.setRule(GameRule.BLOCK_DROPS, RuleResult.DENY);
-		game.setRule(GameRule.BREAK_BLOCKS, RuleResult.DENY);
-		game.setRule(GameRule.CRAFTING, RuleResult.DENY);
-		game.setRule(GameRule.FALL_DAMAGE, RuleResult.DENY);
-		game.setRule(GameRule.HUNGER, RuleResult.DENY);
-		game.setRule(GameRule.INTERACTION, RuleResult.DENY);
-		game.setRule(GameRule.MODIFY_ARMOR, RuleResult.DENY);
-		game.setRule(GameRule.MODIFY_INVENTORY, RuleResult.DENY);
-		game.setRule(GameRule.PLACE_BLOCKS, RuleResult.DENY);
-		game.setRule(GameRule.PORTALS, RuleResult.DENY);
-		game.setRule(GameRule.PVP, RuleResult.DENY);
-		game.setRule(GameRule.TEAM_CHAT, RuleResult.DENY);
-		game.setRule(GameRule.THROW_ITEMS, RuleResult.DENY);
+	public static void setRules(GameActivity activity) {
+		activity.deny(GameRuleType.BLOCK_DROPS);
+		activity.deny(GameRuleType.BREAK_BLOCKS);
+		activity.deny(GameRuleType.CRAFTING);
+		activity.deny(GameRuleType.FALL_DAMAGE);
+		activity.deny(GameRuleType.HUNGER);
+		activity.deny(GameRuleType.INTERACTION);
+		activity.deny(GameRuleType.MODIFY_ARMOR);
+		activity.deny(GameRuleType.MODIFY_INVENTORY);
+		activity.deny(GameRuleType.PLACE_BLOCKS);
+		activity.deny(GameRuleType.PORTALS);
+		activity.deny(GameRuleType.PVP);
+		activity.deny(GameRuleType.THROW_ITEMS);
 	}
 
 	public static GameOpenProcedure open(GameOpenContext<VolleyballConfig> context) {
-		VolleyballConfig config = context.getConfig();
+		VolleyballConfig config = context.game().config();
+		MinecraftServer server = context.server();
 
 		VolleyballMapBuilder mapBuilder = new VolleyballMapBuilder(config);
-		VolleyballMap map = mapBuilder.create();
+		VolleyballMap map = mapBuilder.create(server);
 
-		BubbleWorldConfig worldConfig = new BubbleWorldConfig()
-			.setGenerator(map.createGenerator(context.getServer()))
-			.setDefaultGameMode(GameMode.ADVENTURE);
+		RuntimeWorldConfig worldConfig = new RuntimeWorldConfig()
+			.setGenerator(map.createGenerator(server));
 
-		return context.createOpenProcedure(worldConfig, game -> {
-			TeamSelectionLobby teamSelection = TeamSelectionLobby.applyTo(game, config.getTeams());
-			VolleyballWaitingPhase phase = new VolleyballWaitingPhase(game.getSpace(), map, teamSelection, config);
-			GameWaitingLobby.applyTo(game, config.getPlayerConfig());
+		return context.openWithWorld(worldConfig, (activity, world) -> {
+			TeamSelectionLobby teamSelection = TeamSelectionLobby.addTo(activity, config.getTeams());
+			VolleyballWaitingPhase phase = new VolleyballWaitingPhase(activity.getGameSpace(), world, map, teamSelection, config, context.game().shortName());
+			GameWaitingLobby.addTo(activity, config.getPlayerConfig());
 
-			VolleyballWaitingPhase.setRules(game);
+			VolleyballWaitingPhase.setRules(activity);
 
 			// Listeners
-			game.on(PlayerAddListener.EVENT, phase);
-			game.on(PlayerDeathListener.EVENT, phase);
-			game.on(OfferPlayerListener.EVENT, phase);
-			game.on(RequestStartListener.EVENT, phase);
+			activity.listen(GamePlayerEvents.ADD, phase);
+			activity.listen(PlayerDeathEvent.EVENT, phase);
+			activity.listen(GamePlayerEvents.OFFER, phase);
+			activity.listen(GameActivityEvents.REQUEST_START, phase);
 		});
 	}
 
 	// Listeners
 	@Override
 	public void onAddPlayer(ServerPlayerEntity player) {
-		this.map.spawnAtWaiting(this.gameSpace.getWorld(), player);
+		this.map.spawnAtWaiting(this.world, player);
 	}
 
 	@Override
 	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
-		this.map.spawnAtWaiting(this.gameSpace.getWorld(), player);
+		this.map.spawnAtWaiting(this.world, player);
 		return ActionResult.FAIL;
 	}
 
 	@Override
-	public JoinResult offerPlayer(ServerPlayerEntity player) {
-		return this.isFull() ? JoinResult.gameFull() : JoinResult.ok();
+	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
+		return offer.accept(this.world, this.map.getWaitingSpawnPos())
+			.and(() -> offer.player().changeGameMode(GameMode.ADVENTURE));
 	}
 
 	@Override
-	public StartResult requestStart() {
-		PlayerConfig playerConfig = this.config.getPlayerConfig();
-		if (this.gameSpace.getPlayerCount() < playerConfig.getMinPlayers()) {
-			return StartResult.NOT_ENOUGH_PLAYERS;
-		}
-
-		VolleyballActivePhase.open(this.gameSpace, this.map, this.teamSelection, this.config);
-		return StartResult.OK;
-	}
-
-	// Utilities
-	private boolean isFull() {
-		return this.gameSpace.getPlayerCount() >= this.config.getPlayerConfig().getMaxPlayers();
+	public GameResult onRequestStart() {
+		VolleyballActivePhase.open(this.gameSpace, this.world, this.map, this.teamSelection, this.config, this.shortName);
+		return GameResult.ok();
 	}
 }

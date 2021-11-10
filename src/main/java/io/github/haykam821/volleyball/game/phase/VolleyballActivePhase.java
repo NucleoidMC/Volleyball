@@ -38,12 +38,14 @@ import xyz.nucleoid.plasmid.game.common.team.GameTeam;
 import xyz.nucleoid.plasmid.game.common.team.TeamSelectionLobby;
 import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
 import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.game.player.PlayerOffer;
+import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
 import xyz.nucleoid.plasmid.game.rule.GameRuleType;
 import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerChatEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Disable, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Add, PlayerDeathEvent, GamePlayerEvents.Remove, PlayerChatEvent {
+public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Disable, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Offer, PlayerDeathEvent, GamePlayerEvents.Remove, PlayerChatEvent {
 	private final ServerWorld world;
 	private final GameSpace gameSpace;
 	private final VolleyballMap map;
@@ -52,7 +54,6 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	private final Set<TeamEntry> teams;
 	private final WinManager winManager = new WinManager(this);
 	private final VolleyballScoreboard scoreboard;
-	private boolean opened;
 	private SlimeEntity ball;
 	private int ballTicks = 0;
 	/**
@@ -119,7 +120,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			activity.listen(GameActivityEvents.DISABLE, phase);
 			activity.listen(GameActivityEvents.ENABLE, phase);
 			activity.listen(GameActivityEvents.TICK, phase);
-			activity.listen(GamePlayerEvents.ADD, phase);
+			activity.listen(GamePlayerEvents.OFFER, phase);
 			activity.listen(PlayerDeathEvent.EVENT, phase);
 			activity.listen(GamePlayerEvents.REMOVE, phase);
 			activity.listen(PlayerChatEvent.EVENT, phase);
@@ -148,8 +149,6 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 	@Override
 	public void onEnable() {
-		this.opened = true;
-
 		for (PlayerEntry player : this.players) {
 			player.spawn();
 			player.clearInventory();
@@ -188,13 +187,10 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	}
 
 	@Override
-	public void onAddPlayer(ServerPlayerEntity player) {
-		PlayerEntry entry = this.getPlayerEntry(player);
-		if (entry == null) {
-			this.setSpectator(player);
-		} else if (this.opened) {
-			entry.spawn();
-		}
+	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
+		return offer.accept(this.world, this.map.getWaitingSpawnPos()).and(() -> {
+			this.setSpectator(offer.player());
+		});
 	}
 
 	@Override

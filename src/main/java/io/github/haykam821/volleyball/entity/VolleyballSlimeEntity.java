@@ -1,5 +1,7 @@
 package io.github.haykam821.volleyball.entity;
 
+import java.util.Random;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.damage.DamageSource;
@@ -54,10 +56,17 @@ public class VolleyballSlimeEntity extends SlimeEntity {
 		return entity.isSprinting() && !entity.isOnGround();
 	}
 
-	public static VolleyballSlimeEntity createBall(ServerWorld world, int size) {
-		VolleyballSlimeEntity ball = new VolleyballSlimeEntity(world);
+	public static VolleyballSlimeEntity createBall(ServerWorld world, BallEntityConfig config, Random random) {
+		VolleyballSlimeEntity ball;
+		
+		if (config.displayType().isPresent()) {
+			EntityType<?> displayType = config.displayType().get();
+			ball = new PolymerVolleyballSlimeEntity(world, displayType);
+		} else {
+			ball = new VolleyballSlimeEntity(world);
+		}
 
-		ball.setSize(size, true);
+		ball.setSize(config.size().get(random), true);
 
 		ball.setPersistent();
 		ball.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOW_FALLING, Integer.MAX_VALUE, 1, true, false));

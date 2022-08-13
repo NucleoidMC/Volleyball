@@ -266,7 +266,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	}
 
 	public SlimeEntity spawnBall() {
-		this.ball = VolleyballSlimeEntity.createBall(this.world, this.config.getBallSize());
+		this.ball = VolleyballSlimeEntity.createBall(this.world, this.config.getBallEntityConfig(), this.world.getRandom());
 		this.inactiveBallTicks = 0;
 
 		this.map.spawnAtBall(this.world, this.ball);

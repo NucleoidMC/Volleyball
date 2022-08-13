@@ -13,6 +13,7 @@ import net.minecraft.text.Text;
 import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.map_templates.MapTemplate;
@@ -27,7 +28,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	private final Team scoreboardTeam;
 	private final TemplateRegion area;
 	private final TemplateRegion spawn;
-	private final BlockBounds courtBounds;
+	private final Box courtBox;
 	private int score;
 
 	public TeamEntry(VolleyballActivePhase phase, GameTeam gameTeam, MinecraftServer server, MapTemplate template) {
@@ -41,7 +42,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 
 		this.area = this.getRegion(template, "area");
 		this.spawn = this.getRegion(template, "spawn");
-		this.courtBounds = this.getBoundsOrDefault(template, "court");
+		this.courtBox = this.getBoundsOrDefault(template, "court").asBox();
 	}
 
 	// Getters
@@ -57,10 +58,6 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		return this.area;
 	}
 
-	public BlockBounds getCourtBounds() {
-		return this.courtBounds;
-	}
-
 	// Utilities
 	public void spawn(ServerWorld world, ServerPlayerEntity player) {
 		Vec3d spawnPos = this.spawn.getBounds().centerBottom();
@@ -70,7 +67,11 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	}
 
 	public boolean isBallOnCourt(SlimeEntity ball) {
-		return ball.isOnGround() && this.courtBounds.contains(ball.getBlockPos());
+		if (!this.courtBox.intersects(ball.getBoundingBox())) {
+			return false;
+		}
+
+		return ball.isOnGround() || ball.getY() < this.courtBox.minY;
 	}
 
 	public int incrementScore() {

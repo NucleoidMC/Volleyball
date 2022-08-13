@@ -1,12 +1,7 @@
 package io.github.haykam821.volleyball.game.player.team;
 
-import org.apache.commons.lang3.RandomStringUtils;
-
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import net.minecraft.entity.mob.SlimeEntity;
-import net.minecraft.scoreboard.ServerScoreboard;
-import net.minecraft.scoreboard.Team;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -18,27 +13,28 @@ import net.minecraft.util.math.Vec3d;
 import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.map_templates.MapTemplate;
 import xyz.nucleoid.map_templates.TemplateRegion;
-import xyz.nucleoid.plasmid.game.common.team.GameTeam;
+import xyz.nucleoid.plasmid.game.common.team.GameTeamConfig;
+import xyz.nucleoid.plasmid.game.common.team.GameTeamKey;
 
 public class TeamEntry implements Comparable<TeamEntry> {
 	private static final BlockBounds DEFAULT_BOUNDS = BlockBounds.ofBlock(BlockPos.ORIGIN);
 
 	private final VolleyballActivePhase phase;
-	private final GameTeam gameTeam;
-	private final Team scoreboardTeam;
+
+	private final GameTeamKey key;
+	private final GameTeamConfig config;
+
 	private final TemplateRegion area;
 	private final TemplateRegion spawn;
 	private final Box courtBox;
+
 	private int score;
 
-	public TeamEntry(VolleyballActivePhase phase, GameTeam gameTeam, MinecraftServer server, MapTemplate template) {
+	public TeamEntry(VolleyballActivePhase phase, GameTeamKey key, GameTeamConfig config, MapTemplate template) {
 		this.phase = phase;
-		this.gameTeam = gameTeam;
 
-		ServerScoreboard scoreboard = server.getScoreboard();
-		String key = RandomStringUtils.randomAlphanumeric(16);
-		this.scoreboardTeam = TeamEntry.getOrCreateScoreboardTeam(key, scoreboard);
-		this.initializeTeam();
+		this.key = key;
+		this.config = config;
 
 		this.area = this.getRegion(template, "area");
 		this.spawn = this.getRegion(template, "spawn");
@@ -46,14 +42,6 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	}
 
 	// Getters
-	public GameTeam getGameTeam() {
-		return this.gameTeam;
-	}
-
-	public Team getScoreboardTeam() {
-		return this.scoreboardTeam;
-	}
-
 	public TemplateRegion getArea() {
 		return this.area;
 	}
@@ -99,17 +87,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	}
 
 	public Text getName() {
-		return this.gameTeam.config().name();
-	}
-
-	private void initializeTeam() {
-		// Display
-		this.gameTeam.config().applyToScoreboard(this.scoreboardTeam);
-
-		// Rules
-		this.scoreboardTeam.setFriendlyFireAllowed(false);
-		this.scoreboardTeam.setShowFriendlyInvisibles(true);
-		this.scoreboardTeam.setCollisionRule(Team.CollisionRule.NEVER);
+		return this.config.name();
 	}
 
 	private BlockBounds getBoundsOrDefault(MapTemplate template, String key) {
@@ -118,7 +96,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	}
 
 	private TemplateRegion getRegion(MapTemplate template, String key) {
-		return template.getMetadata().getFirstRegion(this.gameTeam.key().id() + "_" + key);
+		return template.getMetadata().getFirstRegion(this.key.id() + "_" + key);
 	}
 
 	public TeamEntry getOtherTeam() {
@@ -131,13 +109,5 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	@Override
 	public int compareTo(TeamEntry other) {
 		return this.score - other.score;
-	}
-
-	private static Team getOrCreateScoreboardTeam(String key, ServerScoreboard scoreboard) {
-		Team scoreboardTeam = scoreboard.getTeam(key);
-		if (scoreboardTeam == null) {
-			return scoreboard.addTeam(key);
-		}
-		return scoreboardTeam;
 	}
 }

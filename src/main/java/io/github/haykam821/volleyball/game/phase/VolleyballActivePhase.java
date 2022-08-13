@@ -15,8 +15,7 @@ import io.github.haykam821.volleyball.game.player.team.VolleyballScoreboard;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.mob.SlimeEntity;
-import net.minecraft.scoreboard.ServerScoreboard;
-import net.minecraft.server.MinecraftServer;
+import net.minecraft.scoreboard.Team;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -35,6 +34,10 @@ import xyz.nucleoid.plasmid.game.GameCloseReason;
 import xyz.nucleoid.plasmid.game.GameSpace;
 import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
 import xyz.nucleoid.plasmid.game.common.team.GameTeam;
+import xyz.nucleoid.plasmid.game.common.team.GameTeamConfig;
+import xyz.nucleoid.plasmid.game.common.team.GameTeamKey;
+import xyz.nucleoid.plasmid.game.common.team.TeamChat;
+import xyz.nucleoid.plasmid.game.common.team.TeamManager;
 import xyz.nucleoid.plasmid.game.common.team.TeamSelectionLobby;
 import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
 import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
@@ -42,10 +45,9 @@ import xyz.nucleoid.plasmid.game.player.PlayerOffer;
 import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
 import xyz.nucleoid.plasmid.game.rule.GameRuleType;
 import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
-import xyz.nucleoid.stimuli.event.player.PlayerChatEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Disable, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Offer, PlayerDeathEvent, GamePlayerEvents.Remove, PlayerChatEvent {
+public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Offer, PlayerDeathEvent, GamePlayerEvents.Remove {
 	private final ServerWorld world;
 	private final GameSpace gameSpace;
 	private final VolleyballMap map;
@@ -61,7 +63,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	 */
 	private int inactiveBallTicks = 0;
 
-	public VolleyballActivePhase(ServerWorld world, GameSpace gameSpace, VolleyballMap map, TeamSelectionLobby teamSelection, GlobalWidgets widgets, VolleyballConfig config, Text shortName) {
+	public VolleyballActivePhase(ServerWorld world, GameSpace gameSpace, VolleyballMap map, TeamManager teamManager, GlobalWidgets widgets, VolleyballConfig config, Text shortName) {
 		this.world = world;
 		this.gameSpace = gameSpace;
 		this.map = map;
@@ -71,27 +73,23 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 		int teamCount = this.config.getTeams().list().size();
 		this.teams = new HashSet<>(teamCount);
-		Map<GameTeam, TeamEntry> gameTeamsToEntries = new HashMap<>(teamCount);
+		Map<GameTeamKey, TeamEntry> gameTeamsToEntries = new HashMap<>(teamCount);
 
 		this.scoreboard = new VolleyballScoreboard(widgets, this, shortName);
 
-		MinecraftServer server = this.world.getServer();
-		ServerScoreboard scoreboard = server.getScoreboard();
-
-		teamSelection.allocate(this.gameSpace.getPlayers(), (key, player) -> {
-			GameTeam gameTeam = this.config.getTeams().byKey(key);
+		for (ServerPlayerEntity player : this.gameSpace.getPlayers()) {
+			GameTeamKey teamKey = teamManager.teamFor(player);
 
 			// Get or create team
-			TeamEntry team = gameTeamsToEntries.get(gameTeam);
+			TeamEntry team = gameTeamsToEntries.get(teamKey);
 			if (team == null) {
-				team = new TeamEntry(this, gameTeam, server, this.map.getTemplate());
+				team = new TeamEntry(this, teamKey, teamManager.getTeamConfig(teamKey), this.map.getTemplate());
 				this.teams.add(team);
-				gameTeamsToEntries.put(gameTeam, team);
+				gameTeamsToEntries.put(teamKey, team);
 			}
 
 			this.players.add(new PlayerEntry(this, player, team));
-			scoreboard.addPlayerToTeam(player.getEntityName(), team.getScoreboardTeam());
-		});
+		}
 	}
 
 	public static void setRules(GameActivity activity) {
@@ -111,19 +109,33 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 	public static void open(GameSpace gameSpace, ServerWorld world, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config, Text shortName) {
 		gameSpace.setActivity(activity -> {
+			TeamManager teamManager = TeamManager.addTo(activity);
+			TeamChat.addTo(activity, teamManager);
+
+			for (GameTeam team : config.getTeams()) {
+				GameTeamConfig teamConfig = GameTeamConfig.builder(team.config())
+					.setFriendlyFire(false)
+					.setCollision(Team.CollisionRule.NEVER)
+					.build();
+
+				teamManager.addTeam(team.key(), teamConfig);
+			}
+
+			teamSelection.allocate(gameSpace.getPlayers(), (teamKey, player) -> {
+				teamManager.addPlayerTo(player, teamKey);
+			});
+
 			GlobalWidgets widgets = GlobalWidgets.addTo(activity);
-			VolleyballActivePhase phase = new VolleyballActivePhase(world, gameSpace, map, teamSelection, widgets, config, shortName);
+			VolleyballActivePhase phase = new VolleyballActivePhase(world, gameSpace, map, teamManager, widgets, config, shortName);
 
 			VolleyballActivePhase.setRules(activity);
 
 			activity.listen(PlayerAttackEntityEvent.EVENT, phase);
-			activity.listen(GameActivityEvents.DISABLE, phase);
 			activity.listen(GameActivityEvents.ENABLE, phase);
 			activity.listen(GameActivityEvents.TICK, phase);
 			activity.listen(GamePlayerEvents.OFFER, phase);
 			activity.listen(PlayerDeathEvent.EVENT, phase);
 			activity.listen(GamePlayerEvents.REMOVE, phase);
-			activity.listen(PlayerChatEvent.EVENT, phase);
 		});
 	}
 
@@ -135,16 +147,6 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			return ActionResult.PASS;
 		}
 		return ActionResult.FAIL;
-	}
-
-	@Override
-	public void onDisable() {
-		MinecraftServer server = this.world.getServer();
-		ServerScoreboard scoreboard = server.getScoreboard();
-
-		for (TeamEntry team : this.teams) {
-			scoreboard.removeTeam(team.getScoreboardTeam());
-		}
 	}
 
 	@Override
@@ -212,21 +214,6 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 		if (entry != null) {
 			this.players.remove(entry);
 		}
-	}
-
-	@Override
-	public ActionResult onSendChatMessage(ServerPlayerEntity sender, Text message) {
-		TeamEntry team = this.getChatTeam(sender);
-		if (team != null) {
-			Text teamMessage = new TranslatableText("text.plasmid.chat.team", message);
-			for (PlayerEntry player : this.players) {
-				if (player.getTeam() == team) {
-					player.getPlayer().sendSystemMessage(teamMessage, sender.getUuid());
-				}
-			}
-		}
-
-		return ActionResult.PASS;
 	}
 
 	// Getters

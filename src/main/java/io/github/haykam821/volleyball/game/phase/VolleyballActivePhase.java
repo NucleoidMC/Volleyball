@@ -21,7 +21,6 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
@@ -272,11 +271,11 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	}
 
 	public Text getInactiveBallResetText() {
-		return new TranslatableText("text.volleyball.inactive_ball_reset").formatted(Formatting.RED);
+		return Text.translatable("text.volleyball.inactive_ball_reset").formatted(Formatting.RED);
 	}
 
 	public void pling() {
-		this.getGameSpace().getPlayers().playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.PLAYERS, 1, 1);
+		this.getGameSpace().getPlayers().playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), SoundCategory.PLAYERS, 1, 1);
 	}
 
 	public PlayerEntry getPlayerEntry(ServerPlayerEntity player) {

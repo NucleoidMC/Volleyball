@@ -10,7 +10,7 @@ public class VolleyballScoreboard {
 	private final VolleyballActivePhase phase;
 
 	public VolleyballScoreboard(GlobalWidgets widgets, VolleyballActivePhase phase, Text shortName) {
-		Text name = shortName.shallowCopy().styled(style -> {
+		Text name = shortName.copy().styled(style -> {
 			return style.withBold(true);
 		});
 		this.widget = widgets.addSidebar(name);

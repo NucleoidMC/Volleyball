@@ -5,7 +5,6 @@ import net.minecraft.entity.mob.SlimeEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
@@ -75,15 +74,15 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	}
 
 	public Text getScoreText() {
-		return new TranslatableText("text.volleyball.score", this.getName()).formatted(Formatting.GOLD);
+		return Text.translatable("text.volleyball.score", this.getName()).formatted(Formatting.GOLD);
 	}
 
 	public Text getWinText() {
-		return new TranslatableText("text.volleyball.win", this.getName()).formatted(Formatting.GOLD);
+		return Text.translatable("text.volleyball.win", this.getName()).formatted(Formatting.GOLD);
 	}
 
 	public Text getScoreboardEntryText() {
-		return new TranslatableText("text.volleyball.scoreboard.entry", this.getName(), this.score);
+		return Text.translatable("text.volleyball.scoreboard.entry", this.getName(), this.score);
 	}
 
 	public Text getName() {

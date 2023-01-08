@@ -1,7 +1,8 @@
 package io.github.haykam821.volleyball.entity;
 
-import eu.pb4.polymer.api.entity.PolymerEntity;
+import eu.pb4.polymer.core.api.entity.PolymerEntity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
@@ -25,7 +26,7 @@ public class PolymerVolleyballSlimeEntity extends VolleyballSlimeEntity implemen
 	}
 
 	@Override
-	public EntityType<?> getPolymerEntityType() {
+	public EntityType<?> getPolymerEntityType(ServerPlayerEntity player) {
 		return this.displayType;
 	}
 

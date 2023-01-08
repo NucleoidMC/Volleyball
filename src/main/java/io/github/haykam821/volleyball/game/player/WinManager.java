@@ -3,7 +3,6 @@ package io.github.haykam821.volleyball.game.player;
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
 import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Formatting;
 
 public class WinManager {
@@ -14,7 +13,7 @@ public class WinManager {
 	}
 
 	private Text getNoWinnersText() {
-		return new TranslatableText("text.volleyball.no_winners").formatted(Formatting.GOLD);
+		return Text.translatable("text.volleyball.no_winners").formatted(Formatting.GOLD);
 	}
 
 	public boolean checkForWinner() {

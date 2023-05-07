@@ -56,7 +56,7 @@ public class VolleyballSlimeEntity extends SlimeEntity {
 		}
 
 		this.world.spawnEntity(skull);
-		this.world.syncWorldEvent(null, WorldEvents.WITHER_SHOOTS, new BlockPos(skullPos), 0);
+		this.world.syncWorldEvent(null, WorldEvents.WITHER_SHOOTS, BlockPos.ofFloored(skullPos), 0);
 	}
 
 	protected Vec3d getSkullPos() {
@@ -97,7 +97,7 @@ public class VolleyballSlimeEntity extends SlimeEntity {
 		ball.setSize(config.size().get(random), true);
 
 		ball.setPersistent();
-		ball.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOW_FALLING, Integer.MAX_VALUE, 1, true, false));
+		ball.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOW_FALLING, StatusEffectInstance.INFINITE, 1, true, false));
 
 		return ball;
 	}

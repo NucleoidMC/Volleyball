@@ -48,15 +48,15 @@ public class VolleyballSlimeEntity extends SlimeEntity {
 		Vec3d skullPos = this.getSkullPos();
 		Vec3d direction = target.getPos().subtract(skullPos);
 		
-		WitherSkullEntity skull = new WitherSkullEntity(this.world, this, direction.getX(), direction.getY(), direction.getZ());
+		WitherSkullEntity skull = new WitherSkullEntity(this.getWorld(), this, direction.getX(), direction.getY(), direction.getZ());
 		skull.setPos(skullPos.getX(), skullPos.getY(), skullPos.getZ());
 
-		if (this.world.getRandom().nextInt(1000) == 0) {
+		if (this.getWorld().getRandom().nextInt(1000) == 0) {
 			skull.setCharged(true);
 		}
 
-		this.world.spawnEntity(skull);
-		this.world.syncWorldEvent(null, WorldEvents.WITHER_SHOOTS, BlockPos.ofFloored(skullPos), 0);
+		this.getWorld().spawnEntity(skull);
+		this.getWorld().syncWorldEvent(null, WorldEvents.WITHER_SHOOTS, BlockPos.ofFloored(skullPos), 0);
 	}
 
 	protected Vec3d getSkullPos() {

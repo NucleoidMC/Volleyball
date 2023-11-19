@@ -96,8 +96,7 @@ public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeath
 
 	@Override
 	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
-		return offer.accept(this.world, this.map.getWaitingSpawnPos())
-			.and(() -> offer.player().changeGameMode(GameMode.ADVENTURE));
+		return this.map.acceptOffer(offer, this.world, GameMode.ADVENTURE);
 	}
 
 	@Override

@@ -5,12 +5,17 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.GameMode;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import xyz.nucleoid.map_templates.MapTemplate;
 import xyz.nucleoid.map_templates.TemplateRegion;
+import xyz.nucleoid.plasmid.game.player.PlayerOffer;
+import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
 import xyz.nucleoid.plasmid.game.world.generator.TemplateChunkGenerator;
 
 public class VolleyballMap {
+	public static final String FACING_KEY = "Facing";
+
 	private final MapTemplate template;
 	private final TemplateRegion waitingSpawn;
 	private final TemplateRegion ballSpawn;
@@ -29,8 +34,19 @@ public class VolleyballMap {
 		return this.waitingSpawn.getBounds().centerBottom();
 	}
 
+	public float getWaitingSpawnYaw() {
+		return this.waitingSpawn.getData().getFloat(FACING_KEY);
+	}
+
 	public void spawnAtWaiting(ServerWorld world, Entity entity) {
 		this.spawn(world, entity, this.getWaitingSpawnPos());
+	}
+
+	public PlayerOfferResult acceptOffer(PlayerOffer offer, ServerWorld world, GameMode gameMode) {
+		return offer.accept(world, this.getWaitingSpawnPos()).and(() -> {
+			offer.player().setYaw(this.getWaitingSpawnYaw());
+			offer.player().changeGameMode(gameMode);
+		});
 	}
 
 	public void spawnAtBall(ServerWorld world, Entity entity) {
@@ -38,7 +54,7 @@ public class VolleyballMap {
 	}
 
 	private void spawn(ServerWorld world, Entity entity, Vec3d pos) {
-		float yaw = this.waitingSpawn.getData().getFloat("Facing");
+		float yaw = this.getWaitingSpawnYaw();
 
 		if (entity instanceof ServerPlayerEntity) {
 			ServerPlayerEntity player = (ServerPlayerEntity) entity;

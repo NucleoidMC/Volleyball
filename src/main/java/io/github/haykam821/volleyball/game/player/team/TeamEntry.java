@@ -1,5 +1,6 @@
 package io.github.haykam821.volleyball.game.player.team;
 
+import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -48,7 +49,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	// Utilities
 	public void spawn(ServerWorld world, ServerPlayerEntity player) {
 		Vec3d spawnPos = this.spawn.getBounds().centerBottom();
-		float yaw = this.spawn.getData().getFloat("Facing");
+		float yaw = this.spawn.getData().getFloat(VolleyballMap.FACING_KEY);
 	
 		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), yaw, 0);
 	}

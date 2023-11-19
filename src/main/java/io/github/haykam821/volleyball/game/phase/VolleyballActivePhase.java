@@ -187,9 +187,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 	@Override
 	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
-		return offer.accept(this.world, this.map.getWaitingSpawnPos()).and(() -> {
-			this.setSpectator(offer.player());
-		});
+		return this.map.acceptOffer(offer, this.world, GameMode.SPECTATOR);
 	}
 
 	@Override
@@ -283,9 +281,5 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			}
 		}
 		return null;
-	}
-
-	private void setSpectator(ServerPlayerEntity player) {
-		player.changeGameMode(GameMode.SPECTATOR);
 	}
 }

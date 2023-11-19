@@ -5,7 +5,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import io.github.haykam821.volleyball.entity.VolleyballSlimeEntity;
 import io.github.haykam821.volleyball.game.VolleyballConfig;
 import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.player.PlayerEntry;
@@ -14,7 +13,6 @@ import io.github.haykam821.volleyball.game.player.team.TeamEntry;
 import io.github.haykam821.volleyball.game.player.team.VolleyballScoreboard;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.mob.SlimeEntity;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -55,7 +53,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	private final Set<TeamEntry> teams;
 	private final WinManager winManager = new WinManager(this);
 	private final VolleyballScoreboard scoreboard;
-	private SlimeEntity ball;
+	private Entity ball;
 	private int ballTicks = 0;
 	/**
 	 * The number of ticks since the ball was last hit.
@@ -251,8 +249,8 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 		return entry.getTeam();
 	}
 
-	public SlimeEntity spawnBall() {
-		this.ball = VolleyballSlimeEntity.createBall(this.world, this.config.getBallEntityConfig(), this.world.getRandom());
+	public Entity spawnBall() {
+		this.ball = this.config.getBallEntityConfig().createEntity(this.world, this.world.getRandom());
 		this.inactiveBallTicks = 0;
 
 		this.map.spawnAtBall(this.world, this.ball);

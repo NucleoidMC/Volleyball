@@ -1,7 +1,7 @@
 package io.github.haykam821.volleyball.game.player.team;
 
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
-import net.minecraft.entity.mob.SlimeEntity;
+import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -53,7 +53,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), yaw, 0);
 	}
 
-	public boolean isBallOnCourt(SlimeEntity ball) {
+	public boolean isBallOnCourt(Entity ball) {
 		if (!this.courtBox.intersects(ball.getBoundingBox())) {
 			return false;
 		}

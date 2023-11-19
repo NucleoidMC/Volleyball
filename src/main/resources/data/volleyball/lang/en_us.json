@@ -1,4 +1,5 @@
 {
+	"entity.volleyball.ball": "Ball",
 	"game.volleyball.standard_volleyball": "Volleyball",
 	"gameType.volleyball.volleyball": "Volleyball",
 	"text.volleyball.inactive_ball_reset": "The ball was reset because it remained inactive for too long!",

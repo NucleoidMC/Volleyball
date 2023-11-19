@@ -1,5 +1,6 @@
 package io.github.haykam821.volleyball;
 
+import io.github.haykam821.volleyball.entity.VolleyballEntityTypes;
 import io.github.haykam821.volleyball.game.VolleyballConfig;
 import io.github.haykam821.volleyball.game.phase.VolleyballWaitingPhase;
 import net.fabricmc.api.ModInitializer;
@@ -14,6 +15,6 @@ public class Volleyball implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		return;
+		VolleyballEntityTypes.register();
 	}
 }

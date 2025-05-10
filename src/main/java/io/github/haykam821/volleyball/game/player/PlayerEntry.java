@@ -1,13 +1,16 @@
 package io.github.haykam821.volleyball.game.player;
 
+import java.util.Set;
+
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
+import net.minecraft.network.packet.s2c.play.PositionFlag;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import xyz.nucleoid.map_templates.TemplateRegion;
-import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.api.game.event.GameActivityEvents;
 
 public class PlayerEntry implements GameActivityEvents.Tick {
 	private static final double OUT_OF_BOUNDS_CLAMP_INSET = 0.03;
@@ -36,7 +39,7 @@ public class PlayerEntry implements GameActivityEvents.Tick {
 			double y = clampOutOfBounds(pos.getY(), min.getY(), max.getY() + 1);
 			double z = clampOutOfBounds(pos.getZ(), min.getZ(), max.getZ() + 1);
 
-			player.teleport(x, y, z);
+			player.teleport(this.player.getServerWorld(), x, y, z, Set.of(PositionFlag.X_ROT, PositionFlag.Y_ROT), 0, 0, true);
 		}
 	}
 

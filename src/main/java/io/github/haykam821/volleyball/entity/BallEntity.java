@@ -31,6 +31,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import xyz.nucleoid.packettweaker.PacketContext;
 
 public class BallEntity extends HittableEntity implements PolymerEntity {
 	private static final String BALL_TEXTURE = encodeTexture("9efb0547d31598b9359a66dc24d5d9d9771c37cd1492a90c9d6eaa2bac36b0e9");
@@ -75,6 +76,7 @@ public class BallEntity extends HittableEntity implements PolymerEntity {
 			this.interaction.setHeight(this.getHeight());
 
 			this.holder.addElement(this.interaction);
+			this.interaction.ignorePositionUpdates();
 
 			VirtualEntityUtils.addVirtualPassenger(this, this.interaction.getEntityId());
 		} else {
@@ -166,7 +168,7 @@ public class BallEntity extends HittableEntity implements PolymerEntity {
 	}
 
 	@Override
-	public EntityType<?> getPolymerEntityType(ServerPlayerEntity player) {
+	public EntityType<?> getPolymerEntityType(PacketContext context) {
 		return EntityType.ARMOR_STAND;
 	}
 

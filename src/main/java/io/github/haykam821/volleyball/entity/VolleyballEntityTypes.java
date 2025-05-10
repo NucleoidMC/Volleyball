@@ -8,20 +8,24 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
 
 public final class VolleyballEntityTypes {
-	private static final Identifier BALL_ID = new Identifier(Volleyball.MOD_ID, "ball");
+	private static final Identifier BALL_ID = Volleyball.identifier("ball");
+	private static final RegistryKey<EntityType<?>> BALL_KEY = RegistryKey.of(RegistryKeys.ENTITY_TYPE, BALL_ID);
+
 	public static final EntityType<BallEntity> BALL = EntityType.Builder.<BallEntity>create(BallEntity::new, SpawnGroup.MISC)
-		.setDimensions(8 / 16f, 8 / 16f)
-		.build();
+		.dimensions(8 / 16f, 8 / 16f)
+		.build(BALL_KEY);
 
 	private VolleyballEntityTypes() {
 		return;
 	}
 
 	public static void register() {
-		Registry.register(Registries.ENTITY_TYPE, BALL_ID, BALL);
+		Registry.register(Registries.ENTITY_TYPE, BALL_KEY, BALL);
 
 		PolymerEntityUtils.registerType(BALL);
 		FabricDefaultAttributeRegistry.register(BALL, LivingEntity.createLivingAttributes());

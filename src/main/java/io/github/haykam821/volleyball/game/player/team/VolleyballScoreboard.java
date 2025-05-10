@@ -2,8 +2,8 @@ package io.github.haykam821.volleyball.game.player.team;
 
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import net.minecraft.text.Text;
-import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
-import xyz.nucleoid.plasmid.game.common.widget.SidebarWidget;
+import xyz.nucleoid.plasmid.api.game.common.GlobalWidgets;
+import xyz.nucleoid.plasmid.api.game.common.widget.SidebarWidget;
 
 public class VolleyballScoreboard {
 	private final SidebarWidget widget;

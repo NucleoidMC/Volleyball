@@ -1,5 +1,7 @@
 package io.github.haykam821.volleyball.game.player.team;
 
+import java.util.Set;
+
 import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import net.minecraft.entity.Entity;
@@ -13,8 +15,8 @@ import net.minecraft.util.math.Vec3d;
 import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.map_templates.MapTemplate;
 import xyz.nucleoid.map_templates.TemplateRegion;
-import xyz.nucleoid.plasmid.game.common.team.GameTeamConfig;
-import xyz.nucleoid.plasmid.game.common.team.GameTeamKey;
+import xyz.nucleoid.plasmid.api.game.common.team.GameTeamConfig;
+import xyz.nucleoid.plasmid.api.game.common.team.GameTeamKey;
 
 public class TeamEntry implements Comparable<TeamEntry> {
 	private static final BlockBounds DEFAULT_BOUNDS = BlockBounds.ofBlock(BlockPos.ORIGIN);
@@ -51,7 +53,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		Vec3d spawnPos = this.spawn.getBounds().centerBottom();
 		float yaw = this.spawn.getData().getFloat(VolleyballMap.FACING_KEY);
 	
-		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), yaw, 0);
+		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), Set.of(), yaw, 0, true);
 	}
 
 	public boolean isBallOnCourt(Entity ball) {

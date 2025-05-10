@@ -1,8 +1,9 @@
 package io.github.haykam821.volleyball.game.map;
 
+import java.util.Set;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -10,9 +11,9 @@ import net.minecraft.world.GameMode;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import xyz.nucleoid.map_templates.MapTemplate;
 import xyz.nucleoid.map_templates.TemplateRegion;
-import xyz.nucleoid.plasmid.game.player.PlayerOffer;
-import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
-import xyz.nucleoid.plasmid.game.world.generator.TemplateChunkGenerator;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptor;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptorResult;
+import xyz.nucleoid.plasmid.api.game.world.generator.TemplateChunkGenerator;
 
 public class VolleyballMap {
 	public static final String FACING_KEY = "Facing";
@@ -43,10 +44,10 @@ public class VolleyballMap {
 		this.spawn(world, entity, this.getWaitingSpawnPos());
 	}
 
-	public PlayerOfferResult acceptOffer(PlayerOffer offer, ServerWorld world, GameMode gameMode) {
-		return offer.accept(world, this.getWaitingSpawnPos()).and(() -> {
-			offer.player().setYaw(this.getWaitingSpawnYaw());
-			offer.player().changeGameMode(gameMode);
+	public JoinAcceptorResult acceptJoins(JoinAcceptor acceptor, ServerWorld world, GameMode gameMode) {
+		return acceptor.teleport(world, this.getWaitingSpawnPos()).thenRunForEach(player -> {
+			player.setYaw(this.getWaitingSpawnYaw());
+			player.changeGameMode(gameMode);
 		});
 	}
 
@@ -60,14 +61,7 @@ public class VolleyballMap {
 
 	private void spawn(ServerWorld world, Entity entity, Vec3d pos) {
 		float yaw = this.getWaitingSpawnYaw();
-
-		if (entity instanceof ServerPlayerEntity) {
-			ServerPlayerEntity player = (ServerPlayerEntity) entity;
-			player.teleport(world, pos.getX(), pos.getY(), pos.getZ(), yaw, 0);
-		} else {
-			entity.teleport(pos.getX(), pos.getY(), pos.getZ());
-			entity.setYaw(yaw);
-		}
+		entity.teleport(world, pos.getX(), pos.getY(), pos.getZ(), Set.of(), yaw, 0, true);
 	}
 
 	private TemplateRegion getSpawnRegion(String type) {

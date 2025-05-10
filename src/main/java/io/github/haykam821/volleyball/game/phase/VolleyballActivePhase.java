@@ -23,31 +23,33 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.world.GameMode;
-import xyz.nucleoid.plasmid.chat.ChatChannel;
-import xyz.nucleoid.plasmid.chat.HasChatChannel;
-import xyz.nucleoid.plasmid.game.GameActivity;
-import xyz.nucleoid.plasmid.game.GameCloseReason;
-import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
-import xyz.nucleoid.plasmid.game.common.team.GameTeam;
-import xyz.nucleoid.plasmid.game.common.team.GameTeamConfig;
-import xyz.nucleoid.plasmid.game.common.team.GameTeamKey;
-import xyz.nucleoid.plasmid.game.common.team.TeamChat;
-import xyz.nucleoid.plasmid.game.common.team.TeamManager;
-import xyz.nucleoid.plasmid.game.common.team.TeamSelectionLobby;
-import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
-import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
-import xyz.nucleoid.plasmid.game.player.PlayerOffer;
-import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
-import xyz.nucleoid.plasmid.game.rule.GameRuleType;
+import xyz.nucleoid.plasmid.api.chat.ChatChannel;
+import xyz.nucleoid.plasmid.api.chat.HasChatChannel;
+import xyz.nucleoid.plasmid.api.game.GameActivity;
+import xyz.nucleoid.plasmid.api.game.GameCloseReason;
+import xyz.nucleoid.plasmid.api.game.GameSpace;
+import xyz.nucleoid.plasmid.api.game.common.GlobalWidgets;
+import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
+import xyz.nucleoid.plasmid.api.game.common.team.GameTeamConfig;
+import xyz.nucleoid.plasmid.api.game.common.team.GameTeamKey;
+import xyz.nucleoid.plasmid.api.game.common.team.TeamChat;
+import xyz.nucleoid.plasmid.api.game.common.team.TeamManager;
+import xyz.nucleoid.plasmid.api.game.common.team.TeamSelectionLobby;
+import xyz.nucleoid.plasmid.api.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.api.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptor;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptorResult;
+import xyz.nucleoid.plasmid.api.game.player.JoinOffer;
+import xyz.nucleoid.plasmid.api.game.player.PlayerSet;
+import xyz.nucleoid.plasmid.api.game.rule.GameRuleType;
+import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Offer, PlayerDeathEvent, GamePlayerEvents.Remove {
+public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Accept, PlayerDeathEvent, GamePlayerEvents.Remove {
 	private final ServerWorld world;
 	private final GameSpace gameSpace;
 	private final VolleyballMap map;
@@ -66,7 +68,8 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 		this.map = map;
 		this.config = config;
 
-		this.players = new HashSet<>(this.gameSpace.getPlayers().size());
+		PlayerSet participants = this.gameSpace.getPlayers().participants();
+		this.players = new HashSet<>(participants.size());
 
 		int teamCount = this.config.getTeams().list().size();
 		this.teams = new HashSet<>(teamCount);
@@ -74,7 +77,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 		this.scoreboard = new VolleyballScoreboard(widgets, this, shortName);
 
-		for (ServerPlayerEntity player : this.gameSpace.getPlayers()) {
+		for (ServerPlayerEntity player : participants) {
 			GameTeamKey teamKey = teamManager.teamFor(player);
 
 			// Get or create team
@@ -118,7 +121,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 				teamManager.addTeam(team.key(), teamConfig);
 			}
 
-			teamSelection.allocate(gameSpace.getPlayers(), (teamKey, player) -> {
+			teamSelection.allocate(gameSpace.getPlayers().participants(), (teamKey, player) -> {
 				teamManager.addPlayerTo(player, teamKey);
 			});
 
@@ -130,7 +133,8 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			activity.listen(PlayerAttackEntityEvent.EVENT, phase);
 			activity.listen(GameActivityEvents.ENABLE, phase);
 			activity.listen(GameActivityEvents.TICK, phase);
-			activity.listen(GamePlayerEvents.OFFER, phase);
+			activity.listen(GamePlayerEvents.ACCEPT, phase);
+			activity.listen(GamePlayerEvents.OFFER, JoinOffer::acceptParticipants);
 			activity.listen(PlayerDeathEvent.EVENT, phase);
 			activity.listen(GamePlayerEvents.REMOVE, phase);
 		});
@@ -138,14 +142,14 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 	// Listeners
 	@Override
-	public ActionResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
+	public EventResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
 		PlayerEntry entry = this.getPlayerEntry(attacker);
 
 		if (this.ballState.onAttackEntity(entry, attacked)) {
-			return ActionResult.PASS;
+			return EventResult.PASS;
 		}
 
-		return ActionResult.FAIL;
+		return EventResult.DENY;
 	}
 
 	@Override
@@ -153,6 +157,11 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 		for (PlayerEntry player : this.players) {
 			player.spawn();
 			player.clearInventory();
+		}
+
+		for (ServerPlayerEntity player : this.gameSpace.getPlayers().spectators()) {
+			this.map.spawnAtWaiting(this.world, player);
+			player.changeGameMode(GameMode.SPECTATOR);
 		}
 
 		this.spawnBall();
@@ -183,12 +192,12 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	}
 
 	@Override
-	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
-		return this.map.acceptOffer(offer, this.world, GameMode.SPECTATOR);
+	public JoinAcceptorResult onAcceptPlayers(JoinAcceptor acceptor) {
+		return this.map.acceptJoins(acceptor, this.world, GameMode.SPECTATOR);
 	}
 
 	@Override
-	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
+	public EventResult onDeath(ServerPlayerEntity player, DamageSource source) {
 		PlayerEntry entry = this.getPlayerEntry(player);
 		if (entry == null) {
 			this.map.spawnAtWaiting(this.world, player);
@@ -196,7 +205,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			entry.spawn();
 		}
 
-		return ActionResult.FAIL;
+		return EventResult.DENY;
 	}
 
 

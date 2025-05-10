@@ -4,28 +4,31 @@ import io.github.haykam821.volleyball.game.VolleyballConfig;
 import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.map.VolleyballMapBuilder;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
 import net.minecraft.world.GameMode;
 import xyz.nucleoid.fantasy.RuntimeWorldConfig;
-import xyz.nucleoid.plasmid.game.GameActivity;
-import xyz.nucleoid.plasmid.game.GameOpenContext;
-import xyz.nucleoid.plasmid.game.GameOpenProcedure;
-import xyz.nucleoid.plasmid.game.GameResult;
-import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.common.GameWaitingLobby;
-import xyz.nucleoid.plasmid.game.common.team.TeamSelectionLobby;
-import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
-import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
-import xyz.nucleoid.plasmid.game.player.PlayerOffer;
-import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
-import xyz.nucleoid.plasmid.game.rule.GameRuleType;
+import xyz.nucleoid.plasmid.api.game.GameActivity;
+import xyz.nucleoid.plasmid.api.game.GameOpenContext;
+import xyz.nucleoid.plasmid.api.game.GameOpenProcedure;
+import xyz.nucleoid.plasmid.api.game.GameResult;
+import xyz.nucleoid.plasmid.api.game.GameSpace;
+import xyz.nucleoid.plasmid.api.game.common.GameWaitingLobby;
+import xyz.nucleoid.plasmid.api.game.common.team.TeamSelectionLobby;
+import xyz.nucleoid.plasmid.api.game.config.GameConfig;
+import xyz.nucleoid.plasmid.api.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.api.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptor;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptorResult;
+import xyz.nucleoid.plasmid.api.game.player.JoinOffer;
+import xyz.nucleoid.plasmid.api.game.rule.GameRuleType;
+import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeathEvent, GamePlayerEvents.Offer, GameActivityEvents.RequestStart {
+public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeathEvent, GamePlayerEvents.Accept, GameActivityEvents.RequestStart {
 	private final GameSpace gameSpace;
 	private final ServerWorld world;
 	private final VolleyballMap map;
@@ -69,7 +72,9 @@ public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeath
 
 		return context.openWithWorld(worldConfig, (activity, world) -> {
 			TeamSelectionLobby teamSelection = TeamSelectionLobby.addTo(activity, config.getTeams());
-			VolleyballWaitingPhase phase = new VolleyballWaitingPhase(activity.getGameSpace(), world, map, teamSelection, config, context.game().shortName());
+			Text shortName = GameConfig.shortName(RegistryEntry.of(context.game()));
+
+			VolleyballWaitingPhase phase = new VolleyballWaitingPhase(activity.getGameSpace(), world, map, teamSelection, config, shortName);
 			GameWaitingLobby.addTo(activity, config.getPlayerConfig());
 
 			VolleyballWaitingPhase.setRules(activity);
@@ -77,7 +82,8 @@ public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeath
 			// Listeners
 			activity.listen(GamePlayerEvents.ADD, phase);
 			activity.listen(PlayerDeathEvent.EVENT, phase);
-			activity.listen(GamePlayerEvents.OFFER, phase);
+			activity.listen(GamePlayerEvents.ACCEPT, phase);
+			activity.listen(GamePlayerEvents.OFFER, JoinOffer::accept);
 			activity.listen(GameActivityEvents.REQUEST_START, phase);
 		});
 	}
@@ -89,14 +95,14 @@ public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeath
 	}
 
 	@Override
-	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
+	public EventResult onDeath(ServerPlayerEntity player, DamageSource source) {
 		this.map.spawnAtWaiting(this.world, player);
-		return ActionResult.FAIL;
+		return EventResult.DENY;
 	}
 
 	@Override
-	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
-		return this.map.acceptOffer(offer, this.world, GameMode.ADVENTURE);
+	public JoinAcceptorResult onAcceptPlayers(JoinAcceptor acceptor) {
+		return this.map.acceptJoins(acceptor, this.world, GameMode.ADVENTURE);
 	}
 
 	@Override

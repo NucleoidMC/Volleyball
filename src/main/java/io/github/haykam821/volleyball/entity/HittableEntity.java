@@ -13,12 +13,15 @@ import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.projectile.WitherSkullEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.DamageTypeTags;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Arm;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -71,7 +74,7 @@ public abstract class HittableEntity extends LivingEntity {
 		if (this.config.displayType().isPresent()) {
 			float eyeHeight;
 			try {
-				eyeHeight = this.config.displayType().get().create(world).getStandingEyeHeight();
+				eyeHeight = this.config.displayType().get().create(world, SpawnReason.SPAWNER).getStandingEyeHeight();
 			} catch (Exception exception) {
 				eyeHeight = this.getStandingEyeHeight();
 			}
@@ -87,17 +90,12 @@ public abstract class HittableEntity extends LivingEntity {
 	}
 
 	@Override
-	public EntityDimensions getDimensions(EntityPose pose) {
-		return super.getDimensions(pose).scaled(this.getSize());
+	public EntityDimensions getBaseDimensions(EntityPose pose) {
+		return super.getBaseDimensions(pose).scaled(this.getSize());
 	}
 
 	@Override
-	protected float getActiveEyeHeight(EntityPose pose, EntityDimensions dimensions) {
-		return super.getActiveEyeHeight(pose, dimensions) * this.getSize();
-	}
-
-	@Override
-	public boolean hasStatusEffect(StatusEffect effect) {
+	public boolean hasStatusEffect(RegistryEntry<StatusEffect> effect) {
 		return effect == StatusEffects.SLOW_FALLING || super.hasStatusEffect(effect);
 	}
 
@@ -153,9 +151,9 @@ public abstract class HittableEntity extends LivingEntity {
 	}
 
 	@Override
-	public boolean damage(DamageSource source, float amount) {
+	public boolean damage(ServerWorld world, DamageSource source, float amount) {
 		if (source.isIn(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
-			return super.damage(source, amount);
+			return super.damage(world, source, amount);
 		}
 
 		if (source.getAttacker() != null && source.getAttacker() != this) {
@@ -176,9 +174,9 @@ public abstract class HittableEntity extends LivingEntity {
 
 	private void shootSkullAt(Entity target) {
 		Vec3d skullPos = this.getSkullPos();
-		Vec3d direction = target.getPos().subtract(skullPos);
+		Vec3d direction = target.getPos().subtract(skullPos).normalize();
 		
-		WitherSkullEntity skull = new WitherSkullEntity(this.getWorld(), this, direction.getX(), direction.getY(), direction.getZ());
+		WitherSkullEntity skull = new WitherSkullEntity(this.getWorld(), this, direction);
 		skull.setPos(skullPos.getX(), skullPos.getY(), skullPos.getZ());
 
 		if (this.getWorld().getRandom().nextInt(1000) == 0) {
@@ -194,7 +192,7 @@ public abstract class HittableEntity extends LivingEntity {
 	}
 
 	@Override
-	protected void drop(DamageSource source) {
+	protected void drop(ServerWorld world, DamageSource source) {
 		return;
 	}
 

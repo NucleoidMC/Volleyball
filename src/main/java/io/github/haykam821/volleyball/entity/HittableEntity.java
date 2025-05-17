@@ -1,6 +1,5 @@
 package io.github.haykam821.volleyball.entity;
 
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.stream.Stream;
 
@@ -199,11 +198,6 @@ public abstract class HittableEntity extends LivingEntity {
 	@Override
 	public void equipStack(EquipmentSlot slot, ItemStack stack) {
 		return;
-	}
-
-	@Override
-	public Iterable<ItemStack> getArmorItems() {
-		return Collections.emptySet();
 	}
 
 	@Override

@@ -37,7 +37,7 @@ public class VolleyballMap {
 	}
 
 	public float getWaitingSpawnYaw() {
-		return this.waitingSpawn.getData().getFloat(FACING_KEY);
+		return this.waitingSpawn.getData().getFloat(FACING_KEY, 0);
 	}
 
 	public void spawnAtWaiting(ServerWorld world, Entity entity) {

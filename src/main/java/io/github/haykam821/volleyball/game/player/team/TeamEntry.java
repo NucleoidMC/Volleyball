@@ -51,7 +51,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	// Utilities
 	public void spawn(ServerWorld world, ServerPlayerEntity player) {
 		Vec3d spawnPos = this.spawn.getBounds().centerBottom();
-		float yaw = this.spawn.getData().getFloat(VolleyballMap.FACING_KEY);
+		float yaw = this.spawn.getData().getFloat(VolleyballMap.FACING_KEY, 0);
 	
 		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), Set.of(), yaw, 0, true);
 	}

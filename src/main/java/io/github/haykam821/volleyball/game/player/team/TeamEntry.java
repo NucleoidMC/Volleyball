@@ -4,14 +4,14 @@ import java.util.Set;
 
 import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
-import net.minecraft.entity.Entity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.map_templates.MapTemplate;
 import xyz.nucleoid.map_templates.TemplateRegion;
@@ -19,7 +19,7 @@ import xyz.nucleoid.plasmid.api.game.common.team.GameTeamConfig;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeamKey;
 
 public class TeamEntry implements Comparable<TeamEntry> {
-	private static final BlockBounds DEFAULT_BOUNDS = BlockBounds.ofBlock(BlockPos.ORIGIN);
+	private static final BlockBounds DEFAULT_BOUNDS = BlockBounds.ofBlock(BlockPos.ZERO);
 
 	private final VolleyballActivePhase phase;
 
@@ -28,7 +28,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 
 	private final TemplateRegion area;
 	private final TemplateRegion spawn;
-	private final Box courtBox;
+	private final AABB courtBox;
 
 	private int score;
 
@@ -49,11 +49,11 @@ public class TeamEntry implements Comparable<TeamEntry> {
 	}
 
 	// Utilities
-	public void spawn(ServerWorld world, ServerPlayerEntity player) {
-		Vec3d spawnPos = this.spawn.getBounds().centerBottom();
-		float yaw = this.spawn.getData().getFloat(VolleyballMap.FACING_KEY, 0);
+	public void spawn(ServerLevel level, ServerPlayer player) {
+		Vec3 spawnPos = this.spawn.getBounds().centerBottom();
+		float yaw = this.spawn.getData().getFloatOr(VolleyballMap.FACING_KEY, 0);
 	
-		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), Set.of(), yaw, 0, true);
+		player.teleportTo(level, spawnPos.x(), spawnPos.y(), spawnPos.z(), Set.of(), yaw, 0, true);
 	}
 
 	public boolean isBallOnCourt(Entity ball) {
@@ -61,7 +61,7 @@ public class TeamEntry implements Comparable<TeamEntry> {
 			return false;
 		}
 
-		return ball.isOnGround() || ball.getY() < this.courtBox.minY;
+		return ball.onGround() || ball.getY() < this.courtBox.minY;
 	}
 
 	public void incrementOtherTeamScore() {
@@ -82,23 +82,23 @@ public class TeamEntry implements Comparable<TeamEntry> {
 		return this.score >= this.phase.getConfig().getRequiredScore();
 	}
 
-	public Text getScoreText() {
-		return Text.translatable("text.volleyball.score", this.getName()).formatted(Formatting.GOLD);
+	public Component getScoreText() {
+		return Component.translatable("text.volleyball.score", this.getName()).withStyle(ChatFormatting.GOLD);
 	}
 
-	public Text getWinText() {
-		return Text.translatable("text.volleyball.win", this.getName()).formatted(Formatting.GOLD);
+	public Component getWinText() {
+		return Component.translatable("text.volleyball.win", this.getName()).withStyle(ChatFormatting.GOLD);
 	}
 
-	public Text getScoreboardEntryText() {
-		return Text.translatable("text.volleyball.scoreboard.entry", this.getName(), this.score);
+	public Component getScoreboardEntryText() {
+		return Component.translatable("text.volleyball.scoreboard.entry", this.getName(), this.score);
 	}
 
-	public Formatting getFormatting() {
+	public ChatFormatting getFormatting() {
 		return this.config.chatFormatting();
 	}
 
-	public Text getName() {
+	public Component getName() {
 		return this.config.name();
 	}
 

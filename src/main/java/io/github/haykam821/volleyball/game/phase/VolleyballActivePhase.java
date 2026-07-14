@@ -15,17 +15,17 @@ import io.github.haykam821.volleyball.game.player.PlayerEntry;
 import io.github.haykam821.volleyball.game.player.WinManager;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
 import io.github.haykam821.volleyball.game.player.team.VolleyballScoreboard;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.scoreboard.Team;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.world.GameMode;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.level.GameType;
 import xyz.nucleoid.plasmid.api.chat.ChatChannel;
 import xyz.nucleoid.plasmid.api.chat.HasChatChannel;
 import xyz.nucleoid.plasmid.api.game.GameActivity;
@@ -50,7 +50,7 @@ import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
 public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Accept, PlayerDeathEvent, GamePlayerEvents.Remove {
-	private final ServerWorld world;
+	private final ServerLevel level;
 	private final GameSpace gameSpace;
 	private final VolleyballMap map;
 	private final VolleyballConfig config;
@@ -62,8 +62,8 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	private BallState ballState;
 	private int ticksUntilClose = -1;
 
-	public VolleyballActivePhase(ServerWorld world, GameSpace gameSpace, VolleyballMap map, TeamManager teamManager, GlobalWidgets widgets, VolleyballConfig config, Text shortName) {
-		this.world = world;
+	public VolleyballActivePhase(ServerLevel level, GameSpace gameSpace, VolleyballMap map, TeamManager teamManager, GlobalWidgets widgets, VolleyballConfig config, Component shortName) {
+		this.level = level;
 		this.gameSpace = gameSpace;
 		this.map = map;
 		this.config = config;
@@ -77,7 +77,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 		this.scoreboard = new VolleyballScoreboard(widgets, this, shortName);
 
-		for (ServerPlayerEntity player : participants) {
+		for (ServerPlayer player : participants) {
 			GameTeamKey teamKey = teamManager.teamFor(player);
 
 			// Get or create team
@@ -107,7 +107,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 		activity.deny(GameRuleType.THROW_ITEMS);
 	}
 
-	public static void open(GameSpace gameSpace, ServerWorld world, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config, Text shortName) {
+	public static void open(GameSpace gameSpace, ServerLevel level, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config, Component shortName) {
 		gameSpace.setActivity(activity -> {
 			TeamManager teamManager = TeamManager.addTo(activity);
 			TeamChat.addTo(activity, teamManager);
@@ -115,7 +115,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			for (GameTeam team : config.getTeams()) {
 				GameTeamConfig teamConfig = GameTeamConfig.builder(team.config())
 					.setFriendlyFire(false)
-					.setCollision(Team.CollisionRule.NEVER)
+					.setCollision(PlayerTeam.CollisionRule.NEVER)
 					.build();
 
 				teamManager.addTeam(team.key(), teamConfig);
@@ -126,7 +126,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			});
 
 			GlobalWidgets widgets = GlobalWidgets.addTo(activity);
-			VolleyballActivePhase phase = new VolleyballActivePhase(world, gameSpace, map, teamManager, widgets, config, shortName);
+			VolleyballActivePhase phase = new VolleyballActivePhase(level, gameSpace, map, teamManager, widgets, config, shortName);
 
 			VolleyballActivePhase.setRules(activity);
 
@@ -142,7 +142,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 	// Listeners
 	@Override
-	public EventResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
+	public EventResult onAttackEntity(ServerPlayer attacker, InteractionHand hand, Entity attacked, EntityHitResult hitResult) {
 		PlayerEntry entry = this.getPlayerEntry(attacker);
 
 		if (this.ballState.onAttackEntity(entry, attacked)) {
@@ -159,9 +159,9 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 			player.clearInventory();
 		}
 
-		for (ServerPlayerEntity player : this.gameSpace.getPlayers().spectators()) {
-			this.map.spawnAtWaiting(this.world, player);
-			player.changeGameMode(GameMode.SPECTATOR);
+		for (ServerPlayer player : this.gameSpace.getPlayers().spectators()) {
+			this.map.spawnAtWaiting(this.level, player);
+			player.setGameMode(GameType.SPECTATOR);
 		}
 
 		this.spawnBall();
@@ -187,20 +187,21 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 		// Attempt to determine a winner
 		if (this.winManager.checkForWinner()) {
+			this.gameSpace.getPlayers().playSound(SoundEvents.PLAYER_LEVELUP, SoundSource.UI, 1, 1);
 			this.endGame();
 		}
 	}
 
 	@Override
 	public JoinAcceptorResult onAcceptPlayers(JoinAcceptor acceptor) {
-		return this.map.acceptJoins(acceptor, this.world, GameMode.SPECTATOR);
+		return this.map.acceptJoins(acceptor, this.level, GameType.SPECTATOR);
 	}
 
 	@Override
-	public EventResult onDeath(ServerPlayerEntity player, DamageSource source) {
+	public EventResult onDeath(ServerPlayer player, DamageSource source) {
 		PlayerEntry entry = this.getPlayerEntry(player);
 		if (entry == null) {
-			this.map.spawnAtWaiting(this.world, player);
+			this.map.spawnAtWaiting(this.level, player);
 		} else {
 			entry.spawn();
 		}
@@ -210,7 +211,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 
 
 	@Override
-	public void onRemovePlayer(ServerPlayerEntity player) {
+	public void onRemovePlayer(ServerPlayer player) {
 		PlayerEntry entry = this.getPlayerEntry(player);
 		if (entry != null) {
 			this.players.remove(entry);
@@ -218,8 +219,8 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	}
 
 	// Getters
-	public ServerWorld getWorld() {
-		return this.world;
+	public ServerLevel getLevel() {
+		return this.level;
 	}
 
 	public GameSpace getGameSpace() {
@@ -247,7 +248,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	}
 
 	// Utilities
-	public TeamEntry getChatTeam(ServerPlayerEntity sender) {
+	public TeamEntry getChatTeam(ServerPlayer sender) {
 		if (!(sender instanceof HasChatChannel)) return null;
 		if (((HasChatChannel) sender).getChatChannel() != ChatChannel.TEAM) return null;
 
@@ -261,18 +262,18 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	 * Spawns a ball, transitioning it into the ready state.
 	 */
 	public void spawnBall() {
-		Entity ball = this.config.getBallEntityConfig().createEntity(this.world, this.world.getRandom());
+		Entity ball = this.config.getBallEntityConfig().createEntity(this.level, this.level.getRandom());
 		this.setBallState(new ReadyBallState(this, ball));
 
-		this.map.spawnAtBall(this.world, ball);
-		this.world.spawnEntity(ball);
+		this.map.spawnAtBall(this.level, ball);
+		this.level.addFreshEntity(ball);
 	}
 
 	/**
 	 * Resets the ball, transitioning it into the ready state.
 	 */
 	public void resetBall(TeamEntry markerTeam) {
-		HolderAttachment markerAttachment = markerTeam == null ? null : this.ballState.createMarker(markerTeam, this.world);
+		HolderAttachment markerAttachment = markerTeam == null ? null : this.ballState.createMarker(markerTeam, this.level);
 		this.setBallState(new InactiveBallState(this, markerAttachment));
 	}
 
@@ -285,7 +286,7 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	}
 
 	private void endGame() {
-		this.ticksUntilClose = this.config.getTicksUntilClose().get(this.world.getRandom());
+		this.ticksUntilClose = this.config.getTicksUntilClose().sample(this.level.getRandom());
 	}
 
 	private boolean isGameEnding() {
@@ -293,14 +294,14 @@ public class VolleyballActivePhase implements PlayerAttackEntityEvent, GameActiv
 	}
 
 	public boolean hasBallLandedOffCourt(Entity ball) {
-		return ball.isOnGround() && !this.map.getBallSpawnBox().intersects(ball.getBoundingBox());
+		return ball.onGround() && !this.map.getBallSpawnBox().intersects(ball.getBoundingBox());
 	}
 
 	public void pling() {
-		this.getGameSpace().getPlayers().playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), SoundCategory.PLAYERS, 1, 1);
+		this.getGameSpace().getPlayers().playSound(SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 1, 1);
 	}
 
-	public PlayerEntry getPlayerEntry(ServerPlayerEntity player) {
+	public PlayerEntry getPlayerEntry(ServerPlayer player) {
 		for (PlayerEntry entry : this.players) {
 			if (player == entry.getPlayer()) {
 				return entry;

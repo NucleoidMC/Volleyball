@@ -3,12 +3,12 @@ package io.github.haykam821.volleyball.game.ball;
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import io.github.haykam821.volleyball.game.player.PlayerEntry;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
-import net.minecraft.entity.Entity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 public class ActiveBallState extends EntityBallState {
-	private static final Text INACTIVE_BALL_RESET_MESSAGE = Text.translatable("text.volleyball.inactive_ball_reset").formatted(Formatting.RED);
+	private static final Component INACTIVE_BALL_RESET_MESSAGE = Component.translatable("text.volleyball.inactive_ball_reset").withStyle(ChatFormatting.RED);
 
 	/**
 	 * The number of ticks since the ball was last hit.

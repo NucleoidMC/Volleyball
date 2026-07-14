@@ -11,19 +11,19 @@ import eu.pb4.polymer.virtualentity.api.elements.TextDisplayElement;
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import io.github.haykam821.volleyball.game.player.PlayerEntry;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.DisplayEntity.BillboardMode;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Display.BillboardConstraints;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.util.Mth;
 
 public abstract class EntityBallState extends BallState {
-	private static final Text MARKER_TEXT = Text.literal("❌").formatted(Formatting.BOLD);
+	private static final Component MARKER_TEXT = Component.literal("❌").withStyle(ChatFormatting.BOLD);
 
 	private static final Matrix4f MARKER_TRANSFORMATION = new Matrix4f()
 		.translate(-1 / 32f, 0, 21 / 64f)
-		.rotateX(MathHelper.PI / -2)
+		.rotateX(Mth.PI / -2)
 		.scale(2);
 
 	protected final Entity ball;
@@ -73,8 +73,8 @@ public abstract class EntityBallState extends BallState {
 	}
 
 	@Override
-	public HolderAttachment createMarker(TeamEntry team, ServerWorld world) {
-		Text text = MARKER_TEXT.copy().formatted(team.getFormatting());
+	public HolderAttachment createMarker(TeamEntry team, ServerLevel level) {
+		Component text = MARKER_TEXT.copy().withStyle(team.getFormatting());
 		TextDisplayElement element = new TextDisplayElement(text);
 
 		element.setShadow(true);
@@ -83,11 +83,11 @@ public abstract class EntityBallState extends BallState {
 		element.setInvisible(true);
 
 		element.setTransformation(MARKER_TRANSFORMATION);
-		element.setBillboardMode(BillboardMode.VERTICAL);
+		element.setBillboardMode(BillboardConstraints.VERTICAL);
 
 		ElementHolder holder = new ElementHolder();
 		holder.addElement(element);
 
-		return ChunkAttachment.of(holder, world, this.ball.getPos());
+		return ChunkAttachment.of(holder, level, this.ball.position());
 	}
 }

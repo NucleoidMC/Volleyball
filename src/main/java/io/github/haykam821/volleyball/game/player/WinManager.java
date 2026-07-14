@@ -2,8 +2,8 @@ package io.github.haykam821.volleyball.game.player;
 
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 public class WinManager {
 	private final VolleyballActivePhase phase;
@@ -12,8 +12,8 @@ public class WinManager {
 		this.phase = phase;
 	}
 
-	private Text getNoWinnersText() {
-		return Text.translatable("text.volleyball.no_winners").formatted(Formatting.GOLD);
+	private Component getNoWinnersText() {
+		return Component.translatable("text.volleyball.no_winners").withStyle(ChatFormatting.GOLD);
 	}
 
 	public boolean checkForWinner() {
@@ -24,7 +24,7 @@ public class WinManager {
 			}
 		}
 
-		if (this.phase.getPlayers().size() == 0) {
+		if (this.phase.getPlayers().isEmpty()) {
 			this.phase.getGameSpace().getPlayers().sendMessage(this.getNoWinnersText());
 			return true;
 		}

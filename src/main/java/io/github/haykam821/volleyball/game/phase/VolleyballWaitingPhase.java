@@ -3,14 +3,14 @@ package io.github.haykam821.volleyball.game.phase;
 import io.github.haykam821.volleyball.game.VolleyballConfig;
 import io.github.haykam821.volleyball.game.map.VolleyballMap;
 import io.github.haykam821.volleyball.game.map.VolleyballMapBuilder;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.core.Holder;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.world.GameMode;
-import xyz.nucleoid.fantasy.RuntimeWorldConfig;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.GameType;
+import xyz.nucleoid.fantasy.RuntimeLevelConfig;
 import xyz.nucleoid.plasmid.api.game.GameActivity;
 import xyz.nucleoid.plasmid.api.game.GameOpenContext;
 import xyz.nucleoid.plasmid.api.game.GameOpenProcedure;
@@ -30,15 +30,15 @@ import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
 public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeathEvent, GamePlayerEvents.Accept, GameActivityEvents.RequestStart {
 	private final GameSpace gameSpace;
-	private final ServerWorld world;
+	private final ServerLevel level;
 	private final VolleyballMap map;
 	private final TeamSelectionLobby teamSelection;
 	private final VolleyballConfig config;
-	private final Text shortName;
+	private final Component shortName;
 
-	public VolleyballWaitingPhase(GameSpace gameSpace, ServerWorld world, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config, Text shortName) {
+	public VolleyballWaitingPhase(GameSpace gameSpace, ServerLevel level, VolleyballMap map, TeamSelectionLobby teamSelection, VolleyballConfig config, Component shortName) {
 		this.gameSpace = gameSpace;
-		this.world = world;
+		this.level = level;
 		this.map = map;
 		this.teamSelection = teamSelection;
 		this.config = config;
@@ -67,14 +67,14 @@ public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeath
 		VolleyballMapBuilder mapBuilder = new VolleyballMapBuilder(config);
 		VolleyballMap map = mapBuilder.create(server);
 
-		RuntimeWorldConfig worldConfig = new RuntimeWorldConfig()
+		RuntimeLevelConfig levelConfig = new RuntimeLevelConfig()
 			.setGenerator(map.createGenerator(server));
 
-		return context.openWithWorld(worldConfig, (activity, world) -> {
+		return context.openWithLevel(levelConfig, (activity, level) -> {
 			TeamSelectionLobby teamSelection = TeamSelectionLobby.addTo(activity, config.getTeams());
-			Text shortName = GameConfig.shortName(RegistryEntry.of(context.game()));
+			Component shortName = GameConfig.shortName(Holder.direct(context.game()));
 
-			VolleyballWaitingPhase phase = new VolleyballWaitingPhase(activity.getGameSpace(), world, map, teamSelection, config, shortName);
+			VolleyballWaitingPhase phase = new VolleyballWaitingPhase(activity.getGameSpace(), level, map, teamSelection, config, shortName);
 			GameWaitingLobby.addTo(activity, config.getPlayerConfig());
 
 			VolleyballWaitingPhase.setRules(activity);
@@ -90,24 +90,24 @@ public class VolleyballWaitingPhase implements GamePlayerEvents.Add, PlayerDeath
 
 	// Listeners
 	@Override
-	public void onAddPlayer(ServerPlayerEntity player) {
-		this.map.spawnAtWaiting(this.world, player);
+	public void onAddPlayer(ServerPlayer player) {
+		this.map.spawnAtWaiting(this.level, player);
 	}
 
 	@Override
-	public EventResult onDeath(ServerPlayerEntity player, DamageSource source) {
-		this.map.spawnAtWaiting(this.world, player);
+	public EventResult onDeath(ServerPlayer player, DamageSource source) {
+		this.map.spawnAtWaiting(this.level, player);
 		return EventResult.DENY;
 	}
 
 	@Override
 	public JoinAcceptorResult onAcceptPlayers(JoinAcceptor acceptor) {
-		return this.map.acceptJoins(acceptor, this.world, GameMode.ADVENTURE);
+		return this.map.acceptJoins(acceptor, this.level, GameType.ADVENTURE);
 	}
 
 	@Override
 	public GameResult onRequestStart() {
-		VolleyballActivePhase.open(this.gameSpace, this.world, this.map, this.teamSelection, this.config, this.shortName);
+		VolleyballActivePhase.open(this.gameSpace, this.level, this.map, this.teamSelection, this.config, this.shortName);
 		return GameResult.ok();
 	}
 }

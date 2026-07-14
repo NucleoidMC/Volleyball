@@ -6,9 +6,10 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import io.github.haykam821.volleyball.entity.BallEntityConfig;
 import net.minecraft.SharedConstants;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.intprovider.ConstantIntProvider;
-import net.minecraft.util.math.intprovider.IntProvider;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.valueproviders.ConstantInt;
+import net.minecraft.util.valueproviders.IntProvider;
+import net.minecraft.util.valueproviders.IntProviders;
 import xyz.nucleoid.plasmid.api.game.common.config.WaitingLobbyConfig;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeamList;
 
@@ -19,7 +20,7 @@ public class VolleyballConfig {
 			WaitingLobbyConfig.CODEC.fieldOf("players").forGetter(VolleyballConfig::getPlayerConfig),
 			GameTeamList.CODEC.fieldOf("teams").forGetter(VolleyballConfig::getTeams),
 			BallEntityConfig.CODEC.optionalFieldOf("ball_entity", BallEntityConfig.DEFAULT).forGetter(VolleyballConfig::getBallEntityConfig),
-			IntProvider.NON_NEGATIVE_CODEC.optionalFieldOf("ticks_until_close", ConstantIntProvider.create(SharedConstants.TICKS_PER_SECOND * 5)).forGetter(VolleyballConfig::getTicksUntilClose),
+			IntProviders.NON_NEGATIVE_CODEC.optionalFieldOf("ticks_until_close", ConstantInt.of(SharedConstants.TICKS_PER_SECOND * 5)).forGetter(VolleyballConfig::getTicksUntilClose),
 			Codec.INT.optionalFieldOf("required_score", 10).forGetter(VolleyballConfig::getRequiredScore),
 			Codec.INT.optionalFieldOf("reset_ball_ticks", 20 * 3).forGetter(VolleyballConfig::getResetBallTicks),
 			Codec.INT.optionalFieldOf("inactive_ball_ticks", 20 * 15).forGetter(VolleyballConfig::getInactiveBallTicks)

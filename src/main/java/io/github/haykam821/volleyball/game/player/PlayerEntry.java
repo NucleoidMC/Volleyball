@@ -4,11 +4,11 @@ import java.util.Set;
 
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
-import net.minecraft.network.packet.s2c.play.PositionFlag;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.entity.Relative;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 import xyz.nucleoid.map_templates.TemplateRegion;
 import xyz.nucleoid.plasmid.api.game.event.GameActivityEvents;
 
@@ -16,10 +16,10 @@ public class PlayerEntry implements GameActivityEvents.Tick {
 	private static final double OUT_OF_BOUNDS_CLAMP_INSET = 0.03;
 
 	private final VolleyballActivePhase phase;
-	private final ServerPlayerEntity player;
+	private final ServerPlayer player;
 	private final TeamEntry team;
 
-	public PlayerEntry(VolleyballActivePhase phase, ServerPlayerEntity player, TeamEntry team) {
+	public PlayerEntry(VolleyballActivePhase phase, ServerPlayer player, TeamEntry team) {
 		this.phase = phase;
 		this.player = player;
 		this.team = team;
@@ -29,17 +29,17 @@ public class PlayerEntry implements GameActivityEvents.Tick {
 	@Override
 	public void onTick() {
 		TemplateRegion area = this.team.getArea();
-		if (area != null && !area.getBounds().contains(this.player.getBlockPos())) {
-			Vec3d pos = this.player.getPos();
+		if (area != null && !area.getBounds().contains(this.player.blockPosition())) {
+			Vec3 pos = this.player.position();
 
 			BlockPos min = area.getBounds().min();
 			BlockPos max = area.getBounds().max();
 
-			double x = clampOutOfBounds(pos.getX(), min.getX(), max.getX() + 1);
-			double y = clampOutOfBounds(pos.getY(), min.getY(), max.getY() + 1);
-			double z = clampOutOfBounds(pos.getZ(), min.getZ(), max.getZ() + 1);
+			double x = clampOutOfBounds(pos.x(), min.getX(), max.getX() + 1);
+			double y = clampOutOfBounds(pos.y(), min.getY(), max.getY() + 1);
+			double z = clampOutOfBounds(pos.z(), min.getZ(), max.getZ() + 1);
 
-			player.teleport(this.player.getServerWorld(), x, y, z, Set.of(PositionFlag.X_ROT, PositionFlag.Y_ROT), 0, 0, true);
+			player.teleportTo(this.player.level(), x, y, z, Set.of(Relative.X_ROT, Relative.Y_ROT), 0, 0, true);
 		}
 	}
 
@@ -48,7 +48,7 @@ public class PlayerEntry implements GameActivityEvents.Tick {
 		return this.phase;
 	}
 
-	public ServerPlayerEntity getPlayer() {
+	public ServerPlayer getPlayer() {
 		return this.player;
 	}
 
@@ -58,19 +58,19 @@ public class PlayerEntry implements GameActivityEvents.Tick {
 
 	// Utilities
 	public void spawn() {
-		this.team.spawn(this.phase.getWorld(), this.player);
+		this.team.spawn(this.phase.getLevel(), this.player);
 	}
 
 	public void clearInventory() {
-		this.player.getInventory().clear();
+		this.player.getInventory().clearContent();
 
-		this.player.currentScreenHandler.sendContentUpdates();
-		this.player.playerScreenHandler.onContentChanged(this.player.getInventory());
+		this.player.containerMenu.broadcastChanges();
+		this.player.inventoryMenu.slotsChanged(this.player.getInventory());
 	}
 
 	private static double clampOutOfBounds(double value, double min, double max) {
 		if (value < min || value > max) {
-			return MathHelper.clamp(value, min + OUT_OF_BOUNDS_CLAMP_INSET, max - OUT_OF_BOUNDS_CLAMP_INSET);
+			return Mth.clamp(value, min + OUT_OF_BOUNDS_CLAMP_INSET, max - OUT_OF_BOUNDS_CLAMP_INSET);
 		}
 
 		return value;

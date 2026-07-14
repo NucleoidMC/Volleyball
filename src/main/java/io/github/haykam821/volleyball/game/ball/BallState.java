@@ -6,8 +6,8 @@ import eu.pb4.polymer.virtualentity.api.attachment.HolderAttachment;
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import io.github.haykam821.volleyball.game.player.PlayerEntry;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
-import net.minecraft.entity.Entity;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerLevel;
 
 public abstract class BallState {
 	protected final VolleyballActivePhase phase;
@@ -26,7 +26,7 @@ public abstract class BallState {
 		return;
 	}
 
-	public HolderAttachment createMarker(TeamEntry team, ServerWorld world) {
+	public HolderAttachment createMarker(TeamEntry team, ServerLevel world) {
 		return null;
 	}
 }

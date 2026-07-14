@@ -3,7 +3,7 @@ package io.github.haykam821.volleyball.game.ball;
 import io.github.haykam821.volleyball.game.phase.VolleyballActivePhase;
 import io.github.haykam821.volleyball.game.player.PlayerEntry;
 import io.github.haykam821.volleyball.game.player.team.TeamEntry;
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
 
 public class ReadyBallState extends EntityBallState {
 	public ReadyBallState(VolleyballActivePhase phase, Entity ball) {

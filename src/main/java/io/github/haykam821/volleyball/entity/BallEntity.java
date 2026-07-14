@@ -5,6 +5,10 @@ import java.util.Base64;
 import java.util.List;
 import java.util.function.Consumer;
 
+import eu.pb4.polymer.virtualentity.api.data.EntityData;
+import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
+import net.minecraft.network.protocol.game.ServerboundAttackPacket;
+import net.minecraft.world.entity.EntityTypes;
 import org.joml.Matrix4f;
 
 import eu.pb4.polymer.core.api.entity.PolymerEntity;
@@ -17,21 +21,19 @@ import eu.pb4.polymer.virtualentity.api.elements.GenericEntityElement;
 import eu.pb4.polymer.virtualentity.api.elements.InteractionElement;
 import eu.pb4.polymer.virtualentity.api.elements.ItemDisplayElement;
 import eu.pb4.polymer.virtualentity.api.elements.MobAnchorElement;
-import eu.pb4.polymer.virtualentity.api.tracker.EntityTrackedData;
 import it.unimi.dsi.fastutil.ints.IntList;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.data.DataTracker;
-import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
-import net.minecraft.network.packet.s2c.play.EntityPassengersSetS2CPacket;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import xyz.nucleoid.packettweaker.PacketContext;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
+import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 
 public class BallEntity extends HittableEntity implements PolymerEntity {
 	private static final String BALL_TEXTURE = encodeTexture("9efb0547d31598b9359a66dc24d5d9d9771c37cd1492a90c9d6eaa2bac36b0e9");
@@ -44,17 +46,17 @@ public class BallEntity extends HittableEntity implements PolymerEntity {
 	private final InteractionElement interaction;
 	private final MobAnchorElement rideAnchor = new MobAnchorElement();
 
-	public BallEntity(EntityType<? extends BallEntity> type, World world, BallEntityConfig config) {
-		super(type, world, config);
+	public BallEntity(EntityType<? extends BallEntity> type, Level level, BallEntityConfig config) {
+		super(type, level, config);
 
 		this.holder = new ElementHolder() {
 			@Override
-			protected void notifyElementsOfPositionUpdate(Vec3d newPos, Vec3d delta) {
+			protected void notifyElementsOfPositionUpdate(Vec3 newPos, Vec3 delta) {
 				BallEntity.this.rideAnchor.notifyMove(this.currentPos, newPos, delta);
 			}
 
 			@Override
-			public Vec3d getPos() {
+			public Vec3 getPos() {
 				return this.getAttachment().getPos();
 			}
 		};
@@ -72,8 +74,8 @@ public class BallEntity extends HittableEntity implements PolymerEntity {
 		if (this.visualElement instanceof DisplayElement) {
 			this.interaction = InteractionElement.redirect(this);
 
-			this.interaction.setWidth(this.getWidth());
-			this.interaction.setHeight(this.getHeight());
+			this.interaction.setWidth(this.getBbWidth());
+			this.interaction.setHeight(this.getBbHeight());
 
 			this.holder.addElement(this.interaction);
 			this.interaction.ignorePositionUpdates();
@@ -86,8 +88,8 @@ public class BallEntity extends HittableEntity implements PolymerEntity {
 		this.attachment = EntityAttachment.ofTicking(this.holder, this);
 	}
 
-	public BallEntity(EntityType<? extends BallEntity> type, World world) {
-		this(type, world, BallEntityConfig.DEFAULT);
+	public BallEntity(EntityType<? extends BallEntity> type, Level level) {
+		this(type, level, BallEntityConfig.DEFAULT);
 	}
 
 	private GenericEntityElement createVisualElement(BallEntityConfig config) {
@@ -95,18 +97,13 @@ public class BallEntity extends HittableEntity implements PolymerEntity {
 			return new GenericEntityElement() {
 				private final InteractionHandler interactionHandler = new InteractionHandler() {
 					@Override
-					public void interact(ServerPlayerEntity player, Hand hand) {
-						player.networkHandler.onPlayerInteractEntity(PlayerInteractEntityC2SPacket.interact(BallEntity.this, player.isSneaking(), hand));
+					public void interact(ServerPlayer player, InteractionHand hand, Vec3 pos, boolean usingSecondaryAction) {
+						player.connection.handleInteract(new ServerboundInteractPacket(BallEntity.this.getId(), hand, pos, usingSecondaryAction));
 					}
 
 					@Override
-					public void interactAt(ServerPlayerEntity player, Hand hand, Vec3d pos) {
-						player.networkHandler.onPlayerInteractEntity(PlayerInteractEntityC2SPacket.interactAt(BallEntity.this, player.isSneaking(), hand, pos));
-					}
-
-					@Override
-					public void attack(ServerPlayerEntity player) {
-						player.networkHandler.onPlayerInteractEntity(PlayerInteractEntityC2SPacket.attack(BallEntity.this, player.isSneaking()));
+					public void attack(ServerPlayer player) {
+						player.connection.handleAttack(new ServerboundAttackPacket(BallEntity.this.getId()));
 					}
 				};
 
@@ -116,7 +113,7 @@ public class BallEntity extends HittableEntity implements PolymerEntity {
 				}
 
 				@Override
-				public InteractionHandler getInteractionHandler(ServerPlayerEntity player) {
+				public InteractionHandler getInteractionHandler(ServerPlayer player) {
 					return this.interactionHandler;
 				}
 			};
@@ -128,7 +125,7 @@ public class BallEntity extends HittableEntity implements PolymerEntity {
 		element.setShadowRadius(0.25f);
 
 		element.setInterpolationDuration(1);
-		element.setDisplaySize(this.getWidth(), this.getHeight());
+		element.setDisplaySize(this.getBbWidth(), this.getBbHeight());
 
 		return element;
 	}
@@ -169,23 +166,23 @@ public class BallEntity extends HittableEntity implements PolymerEntity {
 
 	@Override
 	public EntityType<?> getPolymerEntityType(PacketContext context) {
-		return EntityType.ARMOR_STAND;
+		return EntityTypes.ARMOR_STAND;
 	}
 
 	@Override
 	public void onEntityPacketSent(Consumer<Packet<?>> consumer, Packet<?> packet) {
-		if (packet instanceof EntityPassengersSetS2CPacket passengersSetPacket) {
-			IntList passengers = IntList.of(passengersSetPacket.getPassengerIds());
-			packet = VirtualEntityUtils.createRidePacket(this.rideAnchor.getEntityId(), passengers);
+		if (packet instanceof ClientboundSetPassengersPacket passengersSetPacket) {
+			IntList passengers = IntList.of(passengersSetPacket.getPassengers());
+			packet = VirtualEntityUtils.createClientboundSetPassengersPacket(this.rideAnchor.getEntityId(), passengers);
 		}
 
 		consumer.accept(packet);
 	}
 
 	@Override
-	public void modifyRawTrackedData(List<DataTracker.SerializedEntry<?>> data, ServerPlayerEntity player, boolean initial) {
-		data.add(DataTracker.SerializedEntry.of(EntityTrackedData.FLAGS, (byte) (1 << EntityTrackedData.INVISIBLE_FLAG_INDEX)));
-		data.add(DataTracker.SerializedEntry.of(ArmorStandEntity.ARMOR_STAND_FLAGS, (byte) (ArmorStandEntity.SMALL_FLAG | ArmorStandEntity.MARKER_FLAG)));
+	public void modifyRawTrackedData(List<SynchedEntityData.DataValue<?>> data, ServerPlayer player, boolean initial) {
+		data.add(SynchedEntityData.DataValue.create(EntityData.FLAGS, (byte) (1 << EntityData.INVISIBLE_FLAG_INDEX)));
+		data.add(SynchedEntityData.DataValue.create(ArmorStand.DATA_CLIENT_FLAGS, (byte) (ArmorStand.CLIENT_FLAG_SMALL | ArmorStand.CLIENT_FLAG_MARKER)));
 	}
 
 	public static String encodeTexture(String hash) {

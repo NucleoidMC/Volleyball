@@ -1,32 +1,31 @@
 package io.github.haykam821.volleyball.entity;
 
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.stream.Stream;
 
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityDimensions;
-import net.minecraft.entity.EntityPose;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.SpawnReason;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.projectile.WitherSkullEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.registry.tag.DamageTypeTags;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Arm;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldEvents;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.Holder;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.LevelEvent;
 
 public abstract class HittableEntity extends LivingEntity {
 	private static final Vector3f[] localVertices = {
@@ -63,25 +62,25 @@ public abstract class HittableEntity extends LivingEntity {
 
 	private boolean wasOnGround;
 
-	public HittableEntity(EntityType<? extends HittableEntity> type, World world, BallEntityConfig config) {
-		super(type, world);
+	public HittableEntity(EntityType<? extends HittableEntity> type, Level level, BallEntityConfig config) {
+		super(type, level);
 
 		this.config = config;
-		this.size = config.size().get(this.random);
+		this.size = config.size().sample(this.random);
 
-		this.calculateDimensions();
+		this.refreshDimensions();
 
 		if (this.config.displayType().isPresent()) {
 			float eyeHeight;
 			try {
-				eyeHeight = this.config.displayType().get().create(world, SpawnReason.SPAWNER).getStandingEyeHeight();
+				eyeHeight = this.config.displayType().get().create(level, EntitySpawnReason.SPAWNER).getEyeHeight();
 			} catch (Exception exception) {
-				eyeHeight = this.getStandingEyeHeight();
+				eyeHeight = this.getEyeHeight();
 			}
 
 			this.eyeHeight = eyeHeight;
 		} else {
-			this.eyeHeight = this.getStandingEyeHeight();
+			this.eyeHeight = this.getEyeHeight();
 		}
 	}
 
@@ -90,20 +89,20 @@ public abstract class HittableEntity extends LivingEntity {
 	}
 
 	@Override
-	public EntityDimensions getBaseDimensions(EntityPose pose) {
-		return super.getBaseDimensions(pose).scaled(this.getSize());
+	public EntityDimensions getDefaultDimensions(Pose pose) {
+		return super.getDefaultDimensions(pose).scale(this.getSize());
 	}
 
 	@Override
-	public boolean hasStatusEffect(RegistryEntry<StatusEffect> effect) {
-		return effect == StatusEffects.SLOW_FALLING || super.hasStatusEffect(effect);
+	public boolean hasEffect(Holder<MobEffect> effect) {
+		return effect == MobEffects.SLOW_FALLING || super.hasEffect(effect);
 	}
 
 	@Override
 	public void tick() {
 		super.tick();
 
-		if (!this.isOnGround()) {
+		if (!this.onGround()) {
 			this.rotationX += this.rotationVelocityX;
 			this.rotationY += this.rotationVelocityY;
 			this.rotationZ += this.rotationVelocityZ;
@@ -151,21 +150,21 @@ public abstract class HittableEntity extends LivingEntity {
 	}
 
 	@Override
-	public boolean damage(ServerWorld world, DamageSource source, float amount) {
-		if (source.isIn(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
-			return super.damage(world, source, amount);
+	public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+		if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+			return super.hurtServer(level, source, amount);
 		}
 
-		if (source.getAttacker() != null && source.getAttacker() != this) {
-			Vec3d hitVelocity = HittableEntity.getHitVelocity(source.getAttacker());
-			this.setVelocity(hitVelocity);
+		if (source.getEntity() != null && source.getEntity() != this) {
+			Vec3 hitVelocity = HittableEntity.getHitVelocity(source.getEntity());
+			this.setDeltaMovement(hitVelocity);
 
-			this.rotationVelocityX = hitVelocity.getY() * ROTATION_STRENGTH;
-			this.rotationVelocityY = hitVelocity.getZ() * ROTATION_STRENGTH;
-			this.rotationVelocityZ = hitVelocity.getX() * ROTATION_STRENGTH;
+			this.rotationVelocityX = hitVelocity.y() * ROTATION_STRENGTH;
+			this.rotationVelocityY = hitVelocity.z() * ROTATION_STRENGTH;
+			this.rotationVelocityZ = hitVelocity.x() * ROTATION_STRENGTH;
 
 			if (this.config.shootsSkulls()) {
-				this.shootSkullAt(source.getAttacker());
+				this.shootSkullAt(source.getEntity());
 			}
 		}
 
@@ -173,52 +172,47 @@ public abstract class HittableEntity extends LivingEntity {
 	}
 
 	private void shootSkullAt(Entity target) {
-		Vec3d skullPos = this.getSkullPos();
-		Vec3d direction = target.getPos().subtract(skullPos).normalize();
+		Vec3 skullPos = this.getSkullPos();
+		Vec3 direction = target.position().subtract(skullPos).normalize();
 		
-		WitherSkullEntity skull = new WitherSkullEntity(this.getWorld(), this, direction);
-		skull.setPos(skullPos.getX(), skullPos.getY(), skullPos.getZ());
+		WitherSkull skull = new WitherSkull(this.level(), this, direction);
+		skull.setPosRaw(skullPos.x(), skullPos.y(), skullPos.z());
 
-		if (this.getWorld().getRandom().nextInt(1000) == 0) {
-			skull.setCharged(true);
+		if (this.level().getRandom().nextInt(1000) == 0) {
+			skull.setDangerous(true);
 		}
 
-		this.getWorld().spawnEntity(skull);
-		this.getWorld().syncWorldEvent(null, WorldEvents.WITHER_SHOOTS, BlockPos.ofFloored(skullPos), 0);
+		this.level().addFreshEntity(skull);
+		this.level().levelEvent(null, LevelEvent.SOUND_WITHER_BOSS_SHOOT, BlockPos.containing(skullPos), 0);
 	}
 
-	protected Vec3d getSkullPos() {
-		return new Vec3d(this.getX(), this.getY() + this.eyeHeight * this.size, this.getZ());
+	protected Vec3 getSkullPos() {
+		return new Vec3(this.getX(), this.getY() + this.eyeHeight * this.size, this.getZ());
 	}
 
 	@Override
-	protected void drop(ServerWorld world, DamageSource source) {
+	protected void dropAllDeathLoot(ServerLevel level, DamageSource source) {
 		return;
 	}
 
 	@Override
-	public void equipStack(EquipmentSlot slot, ItemStack stack) {
+	public void setItemSlot(EquipmentSlot slot, ItemStack stack) {
 		return;
 	}
 
 	@Override
-	public Iterable<ItemStack> getArmorItems() {
-		return Collections.emptySet();
-	}
-
-	@Override
-	public ItemStack getEquippedStack(EquipmentSlot slot) {
+	public ItemStack getItemBySlot(EquipmentSlot slot) {
 		return ItemStack.EMPTY;
 	}
 
 	@Override
-	public Arm getMainArm() {
-		return Arm.RIGHT;
+	public HumanoidArm getMainArm() {
+		return HumanoidArm.RIGHT;
 	}
 
-	private static Vec3d getHitVelocity(Entity attacker) {
-		double yaw = Math.toRadians(attacker.getYaw() + 90);
-		double pitch = Math.toRadians(attacker.getPitch() + 90);
+	private static Vec3 getHitVelocity(Entity attacker) {
+		double yaw = Math.toRadians(attacker.getYRot() + 90);
+		double pitch = Math.toRadians(attacker.getXRot() + 90);
 
 		double spikeMultiplier = HittableEntity.isSpiking(attacker) ? 1.2 : 1;
 
@@ -226,10 +220,10 @@ public abstract class HittableEntity extends LivingEntity {
 		double y = Math.cos(pitch) * Y_STRENGTH;
 		double z = Math.sin(pitch) * Math.sin(yaw) * XZ_STRENGTH * spikeMultiplier;
 
-		return new Vec3d(x, y, z);
+		return new Vec3(x, y, z);
 	}
 
 	private static boolean isSpiking(Entity entity) {
-		return entity.isSprinting() && !entity.isOnGround();
+		return entity.isSprinting() && !entity.onGround();
 	}
 }
